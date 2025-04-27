@@ -1,13 +1,9 @@
-import React from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import './App.css'
-
-function Home() {
-  return <h1>Home Page</h1>
-}
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import "./App.css";
+import Home from "./components/Home";
 
 function About() {
-  return <h1>About Page</h1>
+  return <h1>About Page</h1>;
 }
 
 function App() {
@@ -18,7 +14,7 @@ function App() {
         <Route path="/about" element={<About />} />
       </Routes>
     </Router>
-  )
+  );
 }
 
-export default App
+export default App;
