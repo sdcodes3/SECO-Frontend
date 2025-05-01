@@ -1,18 +1,53 @@
+import { useState, useEffect } from "react";
+import Logo from "../assets/seco logo.png";
+import { useNavigate } from "react-router-dom";
+
 const Header = () => {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      // Apply the effect when scrolled more than 10px
+      if (window.scrollY > 10) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+
+    // Clean up the event listener when component unmounts
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  const handleSignIn = () => {
+    navigate("/auth");
+  };
+
+  const handleSignUp = () => {
+    navigate("/auth");
+  };
+
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-40 py-4 px-6 transition-all duration-300 bg-transparent w-full
-    "
+      className={`fixed top-0 left-0 right-0 z-40 py-4 px-6 transition-all duration-300 w-full ${
+        isScrolled ? "glass shadow-sm backdrop-blur-lg" : "bg-transparent"
+      }`}
     >
-      <div className="container mx-auto">
+      <div className="container mx-auto p">
         <div className="flex items-center justify-between">
           <a className="flex items-center" href="/">
-            <span className="text-2xl font-bold text-gradient">Seco</span>
-            <span className="ml-1 text-2xl font-medium">Discover</span>
+            {/* <span className="text-2xl font-bold text-gradient">Seco</span>
+            <span className="ml-1 text-2xl font-medium">Discover</span> */}
+            <img src={Logo} alt="logo" width={32} className="w-20" />
           </a>
           <nav className="hidden md:flex items-center space-x-8">
             <a
-              className="hover:text-foreground transition-all duration-200 relative py-2 flex items-center text-primary font-medium after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-primary"
+              className="hover:text-foreground transition-all duration-200 relative py-2 flex items-center text-primary font-medium after:absolute after:bottom-0 after:bg-primary after:left-0 after:w-full after:h-0.5"
               href="/"
             >
               <svg
@@ -22,9 +57,9 @@ const Header = () => {
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 className="lucide lucide-house h-4 w-4 mr-2"
               >
                 <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path>
@@ -43,9 +78,9 @@ const Header = () => {
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 className="lucide lucide-calendar h-4 w-4 mr-2"
               >
                 <path d="M8 2v4"></path>
@@ -57,10 +92,16 @@ const Header = () => {
             </a>
           </nav>
           <div className="hidden md:flex items-center space-x-4">
-            <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+            <button
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+              onClick={handleSignIn}
+            >
               Sign In
             </button>
-            <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+            <button
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+              onClick={handleSignUp}
+            >
               Sign Up
             </button>
           </div>
@@ -75,9 +116,9 @@ const Header = () => {
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
               <path d="M4 12h16M4 6h16M4 18h16"></path>
             </svg>
@@ -98,9 +139,9 @@ const Header = () => {
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 className="lucide lucide-house h-4 w-4 mr-2"
               >
                 <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path>
@@ -119,9 +160,9 @@ const Header = () => {
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 className="lucide lucide-calendar h-4 w-4 mr-2"
               >
                 <path d="M8 2v4"></path>
@@ -132,10 +173,16 @@ const Header = () => {
               Events
             </a>
             <div className="flex flex-col space-y-2 pt-2">
-              <button className="inline-flex items-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full justify-center">
+              <button
+                className="inline-flex items-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full justify-center"
+                onClick={handleSignIn}
+              >
                 Sign In
               </button>
-              <button className="inline-flex items-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full justify-center">
+              <button
+                className="inline-flex items-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full justify-center"
+                onClick={handleSignUp}
+              >
                 Sign Up
               </button>
             </div>

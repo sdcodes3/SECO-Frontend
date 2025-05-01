@@ -1,3 +1,4 @@
+import Logo from "../assets/seco logo.png";
 const Footer = () => {
   return (
     <footer className="bg-secondary/50 py-16 mt-20">
@@ -5,8 +6,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
           <div className="lg:col-span-2">
             <a className="flex items-center" href="/">
-              <span className="text-2xl font-bold text-gradient">Seco</span>
-              <span className="ml-1 text-2xl font-medium">Discover</span>
+              <img src={Logo} alt="logo" width={32} className="w-20" />
             </a>
             <p className="mt-4 text-muted-foreground max-w-sm">
               Connecting startups and founders with the resources, investors,
