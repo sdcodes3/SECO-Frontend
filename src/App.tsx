@@ -1,24 +1,21 @@
-import React from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import './App.css'
-
-function Home() {
-  return <h1>Home Page</h1>
-}
-
-function About() {
-  return <h1>About Page</h1>
-}
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import "./App.css";
+import Home from "./components/Home";
+import LoginSignUp from "./components/LoginSignUp";
+import EventDashboard from "./pages/EventDashboard";
+import EventDetails from "./components/EventDetails";
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/about" element={<About />} />
+        <Route path="/auth" element={<LoginSignUp />} />
+        <Route path="/events" element={<EventDashboard />} />
+        <Route path="/event/:id" element={<EventDetails />} />
       </Routes>
     </Router>
-  )
+  );
 }
 
-export default App
+export default App;
