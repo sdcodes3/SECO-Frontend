@@ -1,16 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Logo from "../assets/seco logo.png";
-import {
-  GoogleLogin,
-  GoogleOAuthProvider,
-  CredentialResponse
-} from "@react-oauth/google";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { AuthResponse } from "../types/auth";
+import { createClient } from "@supabase/supabase-js";
+import { useNavigate } from "react-router-dom";
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL!,
+  import.meta.env.VITE_SUPABASE_ANON_KEY!
+);
 
 const LoginSignUp = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [formData, setFormData] = useState({
     fullName: "",
@@ -20,60 +19,17 @@ const LoginSignUp = () => {
   });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Handle LinkedIn callback
-  useEffect(() => {
-    const code = searchParams.get("code");
-    const state = searchParams.get("state");
-    const error = searchParams.get("error");
-    const errorDescription = searchParams.get("error_description");
+  const handleOAuthLogin = async (provider: "google" | "linkedin_oidc") => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: import.meta.env.VITE_FRONTEND_DEVELOPMENT_URI! + "/dashboard",
+      },
+    });
 
     if (error) {
-      console.error("LinkedIn login error:", errorDescription);
-      alert(`LinkedIn login failed: ${errorDescription}`);
-      return;
-    }
-
-    // Verify the state parameter
-    const storedState = localStorage.getItem("linkedin_oauth_state");
-    if (state !== storedState) {
-      console.error("State mismatch - possible CSRF attack");
-      // alert("Authentication failed: Invalid state parameter");
-      return;
-    }
-
-    // Clear the stored state
-    localStorage.removeItem("linkedin_oauth_state");
-
-    if (code) {
-      handleLinkedInCallback(code);
-    }
-  }, [searchParams]);
-
-  const handleLinkedInCallback = async (code: string) => {
-    try {
-      const response = await fetch("http://localhost:3000/api/auth/linkedin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ code })
-      });
-
-      if (!response.ok) {
-        throw new Error("LinkedIn authentication failed");
-      }
-
-      const data: AuthResponse = await response.json();
-
-      // Store the token in localStorage
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-
-      // Redirect to dashboard
-      navigate("/dashboard");
-    } catch (error) {
-      console.error("Error during LinkedIn authentication:", error);
-      alert("LinkedIn authentication failed. Please try again.");
+      console.error("OAuth login error:", error.message);
+      alert("Login failed");
     }
   };
 
@@ -147,69 +103,6 @@ const LoginSignUp = () => {
       userType: value
     }));
     setIsDropdownOpen(false);
-  };
-
-  const handleGoogleSuccess = async (
-    credentialResponse: CredentialResponse
-  ) => {
-    try {
-      const response = await fetch("http://localhost:3000/api/auth/google", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          credential: credentialResponse.credential
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error("Authentication failed");
-      }
-
-      const data: AuthResponse = await response.json();
-
-      // Store the token in localStorage or your preferred state management
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-
-      // Redirect to dashboard
-      navigate("/dashboard");
-    } catch (error) {
-      console.error("Error during Google authentication:", error);
-      alert("Authentication failed. Please try again.");
-    }
-  };
-
-  const handleGoogleError = () => {
-    console.log("Login Failed");
-    alert("Login Failed");
-  };
-
-  const handleLinkedInLogin = () => {
-    const clientId = import.meta.env.VITE_LINKEDIN_CLIENT_ID;
-    const redirectUri = "http://localhost:5173/dashboard";
-
-    // Define the scopes you need
-    const scopes = [
-      "r_liteprofile", // Basic profile info
-      "r_emailaddress", // Email address
-      "w_member_social" // Post updates (if needed)
-    ];
-    const scope = encodeURIComponent(scopes.join(" "));
-
-    // Generate a secure random state
-    const state = window.crypto
-      .getRandomValues(new Uint32Array(1))[0]
-      .toString(36);
-
-    // Store the state in localStorage to verify it later
-    localStorage.setItem("linkedin_oauth_state", state);
-
-    const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(
-      redirectUri
-    )}&scope=${scope}&state=${state}`;
-    window.location.href = authUrl;
   };
 
   return (
@@ -335,29 +228,32 @@ const LoginSignUp = () => {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <GoogleOAuthProvider
-                    clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
+                <button
+                  onClick={() => handleOAuthLogin("google")}
+                  className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-gray-100 text-black"
+                >
+                  <img
+                    src="https://www.svgrepo.com/show/475656/google-color.svg"
+                    alt="Google logo"
+                    className="w-5 h-5"
+                  />
+                  Sign in with Google
+                </button>
+
+                <button
+                  onClick={() => handleOAuthLogin("linkedin_oidc")}
+                  className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-[#0077B5] text-white hover:bg-[#0077B5]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
                   >
-                    <GoogleLogin
-                      onSuccess={handleGoogleSuccess}
-                      onError={handleGoogleError}
-                      useOneTap
-                    />
-                  </GoogleOAuthProvider>
-                  <button
-                    onClick={handleLinkedInLogin}
-                    className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-[#0077B5] text-white hover:bg-[#0077B5]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                    </svg>
-                    Sign in with LinkedIn
-                  </button>
-                </div>
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                  </svg>
+                  Sign in with LinkedIn
+                </button>
+              </div>
               </form>
 
               <div className="mt-6 pt-6 border-t">
