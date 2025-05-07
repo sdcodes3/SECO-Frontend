@@ -3,6 +3,8 @@ import Logo from "../assets/seco logo.png";
 import { createClient } from "@supabase/supabase-js";
 import { useNavigate } from "react-router-dom";
 
+
+
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL!,
   import.meta.env.VITE_SUPABASE_ANON_KEY!
@@ -24,7 +26,7 @@ const LoginSignUp = () => {
       await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: import.meta.env.VITE_FRONTEND_DEVELOPMENT_URI! + "/dashboard",
+          redirectTo: import.meta.env.CURRENT_ENVIRONMENT == "DEVELOPMENT" ? import.meta.env.VITE_FRONTEND_DEVELOPMENT_URI : import.meta.env.VITE_FRONTEND_PRODUCTION_URI + "/dashboard",
         },
       });
 
