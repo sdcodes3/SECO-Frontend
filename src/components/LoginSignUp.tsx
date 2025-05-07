@@ -20,15 +20,16 @@ const LoginSignUp = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const handleOAuthLogin = async (provider: "google" | "linkedin_oidc") => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: import.meta.env.VITE_FRONTEND_DEVELOPMENT_URI! + "/dashboard",
-      },
-    });
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: import.meta.env.VITE_FRONTEND_DEVELOPMENT_URI! + "/dashboard",
+        },
+      });
 
-    if (error) {
-      console.error("OAuth login error:", error.message);
+    } catch(error) {
+      console.error("OAuth login error:", error);
       alert("Login failed");
     }
   };
@@ -229,6 +230,7 @@ const LoginSignUp = () => {
 
                 <div className="flex flex-col gap-2">
                 <button
+                  type="button"
                   onClick={() => handleOAuthLogin("google")}
                   className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-gray-100 text-black"
                 >
@@ -241,6 +243,7 @@ const LoginSignUp = () => {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => handleOAuthLogin("linkedin_oidc")}
                   className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-[#0077B5] text-white hover:bg-[#0077B5]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
