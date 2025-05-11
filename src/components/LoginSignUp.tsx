@@ -26,7 +26,7 @@ const LoginSignUp = () => {
       await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: import.meta.env.CURRENT_ENVIRONMENT == "DEVELOPMENT" ? import.meta.env.VITE_FRONTEND_DEVELOPMENT_URI : import.meta.env.VITE_FRONTEND_PRODUCTION_URI + "/dashboard",
+          redirectTo: import.meta.env.VITE_FRONTEND_DEVELOPMENT_URI + "/dashboard",
         },
       });
 
@@ -54,8 +54,9 @@ const LoginSignUp = () => {
     e.preventDefault();
     try {
       const endpoint = activeTab === "login" ? "/login" : "/signup";
+      const backendUri = import.meta.env.VITE_BACKEND_PRODUCTION_URI
       const response = await fetch(
-        `http://localhost:3000/api/auth${endpoint}`,
+        `${backendUri}/api/auth${endpoint}`,
         {
           method: "POST",
           headers: {
