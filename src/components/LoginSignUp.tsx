@@ -26,7 +26,7 @@ const LoginSignUp = () => {
       await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: import.meta.env.VITE_BACKEND_PRODUCTION_URI + "/dashboard",
+          redirectTo: import.meta.env.VITE_TEMPORARY_PRODUCTION_URI + "/dashboard",
         },
       });
 
