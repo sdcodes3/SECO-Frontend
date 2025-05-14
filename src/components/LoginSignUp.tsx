@@ -8,6 +8,15 @@ import {
 import { useNavigate } from "react-router-dom";
 import { AuthResponse } from "../types/auth";
 // import { LinkedIn } from "@react-oauth/linkedin";
+import { createClient } from "@supabase/supabase-js";
+import { useNavigate } from "react-router-dom";
+
+
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL!,
+  import.meta.env.VITE_SUPABASE_ANON_KEY!
+);
 
 const LoginSignUp = () => {
   const navigate = useNavigate();
@@ -20,6 +29,20 @@ const LoginSignUp = () => {
   });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  const handleOAuthLogin = async (provider: "google" | "linkedin_oidc") => {
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: import.meta.env.CURRENT_ENVIRONMENT == "DEVELOPMENT" ? import.meta.env.VITE_FRONTEND_DEVELOPMENT_URI : import.meta.env.VITE_FRONTEND_PRODUCTION_URI + "/dashboard",
+        },
+      });
+
+    } catch(error) {
+      console.error("OAuth login error:", error);
+      alert("Login failed");
+    }
+  };
   const handleTabChange = (tab: "login" | "signup") => {
     setActiveTab(tab);
   };
@@ -319,6 +342,34 @@ const LoginSignUp = () => {
                     )}
                   </LinkedIn> */}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => handleOAuthLogin("google")}
+                  className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-gray-100 text-black"
+                >
+                  <img
+                    src="https://www.svgrepo.com/show/475656/google-color.svg"
+                    alt="Google logo"
+                    className="w-5 h-5"
+                  />
+                  Sign in with Google
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleOAuthLogin("linkedin_oidc")}
+                  className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-[#0077B5] text-white hover:bg-[#0077B5]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                  </svg>
+                  Sign in with LinkedIn
+                </button>
+              </div>
               </form>
               <div className="mt-6 pt-6 border-t">
                 <div className="flex items-center mb-4">
