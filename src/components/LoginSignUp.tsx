@@ -1,9 +1,14 @@
 import { useState } from "react";
 import Logo from "../assets/seco logo.png";
-import { createClient } from "@supabase/supabase-js";
+import {
+  GoogleLogin,
+  GoogleOAuthProvider,
+  CredentialResponse
+} from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
-
-
+import { AuthResponse } from "../types/auth";
+// import { LinkedIn } from "@react-oauth/linkedin";
+import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL!,
@@ -26,16 +31,17 @@ const LoginSignUp = () => {
       await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: import.meta.env.CURRENT_ENVIRONMENT == "DEVELOPMENT" ? import.meta.env.VITE_FRONTEND_DEVELOPMENT_URI : import.meta.env.VITE_FRONTEND_PRODUCTION_URI + "/dashboard",
-        },
+          redirectTo:
+            import.meta.env.CURRENT_ENVIRONMENT == "DEVELOPMENT"
+              ? import.meta.env.VITE_FRONTEND_DEVELOPMENT_URI
+              : import.meta.env.VITE_FRONTEND_PRODUCTION_URI + "/dashboard"
+        }
       });
-
-    } catch(error) {
+    } catch (error) {
       console.error("OAuth login error:", error);
       alert("Login failed");
     }
   };
-
   const handleTabChange = (tab: "login" | "signup") => {
     setActiveTab(tab);
   };
@@ -107,6 +113,78 @@ const LoginSignUp = () => {
     }));
     setIsDropdownOpen(false);
   };
+
+  const handleGoogleSuccess = async (
+    credentialResponse: CredentialResponse
+  ) => {
+    try {
+      const response = await fetch("http://localhost:3000/api/auth/google", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          credential: credentialResponse.credential
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Authentication failed");
+      }
+
+      const data: AuthResponse = await response.json();
+
+      // Store the token in localStorage or your preferred state management
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // Redirect to dashboard
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Error during Google authentication:", error);
+      alert("Authentication failed. Please try again.");
+    }
+  };
+
+  const handleGoogleError = () => {
+    console.log("Login Failed");
+    alert("Login Failed");
+  };
+
+  // const handleLinkedInSuccess = async (response: LinkedInResponse) => {
+  //   try {
+  //     const result = await fetch("http://localhost:3000/api/auth/linkedin", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json"
+  //       },
+  //       body: JSON.stringify({
+  //         code: response.code
+  //       })
+  //     });
+
+  //     if (!result.ok) {
+  //       throw new Error("LinkedIn authentication failed");
+  //     }
+
+  //     const data: AuthResponse = await result.json();
+
+  //     // Store the token and user data
+  //     localStorage.setItem("token", data.token);
+  //     localStorage.setItem("user", JSON.stringify(data.user));
+
+  //     // Redirect to dashboard
+  //     navigate("/dashboard");
+  //   } catch (error) {
+  //     console.error("Error during LinkedIn authentication:", error);
+  //     alert("LinkedIn authentication failed. Please try again.");
+  //   }
+  // };
+
+  // const handleLinkedInError = () => {
+  //   console.log("LinkedIn Login Failed");
+  //   alert("LinkedIn Login Failed");
+  // };
 
   return (
     <div className="container mx-auto py-24 px-4 flex items-center justify-center min-h-screen">
@@ -231,6 +309,38 @@ const LoginSignUp = () => {
                 </div>
 
                 <div className="flex flex-col gap-2">
+                  <GoogleOAuthProvider
+                    clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
+                  >
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={handleGoogleError}
+                      useOneTap
+                    />
+                  </GoogleOAuthProvider>
+                  {/* <LinkedIn
+                    clientId={import.meta.env.VITE_LINKEDIN_CLIENT_ID}
+                    onSuccess={handleLinkedInSuccess}
+                    onError={handleLinkedInError}
+                    redirectUri="http://localhost:5173"
+                  >
+                    {({ signIn }: { signIn: () => void }) => (
+                      <button
+                        onClick={signIn}
+                        className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-[#0077B5] text-white hover:bg-[#0077B5]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                        </svg>
+                        Sign in with LinkedIn
+                      </button>
+                    )}
+                  </LinkedIn> */}
+                </div>
                 <button
                   type="button"
                   onClick={() => handleOAuthLogin("google")}
@@ -258,236 +368,234 @@ const LoginSignUp = () => {
                   </svg>
                   Sign in with LinkedIn
                 </button>
-              </div>
               </form>
+            </div>
+            <div className="mt-6 pt-6 border-t">
+              <div className="flex items-center mb-4">
+                <svg
+                  className="lucide lucide-info h-5 w-5 text-blue-500 mr-2"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 16v-4" />
+                  <path d="M12 8h.01" />
+                </svg>
+                <h3 className="text-sm font-medium">
+                  Test Accounts (for demo)
+                </h3>
+              </div>
 
-              <div className="mt-6 pt-6 border-t">
-                <div className="flex items-center mb-4">
+              {/* <div className="grid grid-cols-2 gap-2 mb-4">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 justify-start text-xs"
+                >
+                  Login as Startup
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 justify-start text-xs"
+                >
+                  Login as Individual Founder
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 justify-start text-xs"
+                >
+                  Login as Investor
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 justify-start text-xs"
+                >
+                  Login as Incubator
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 justify-start text-xs"
+                >
+                  Login as Accelerator
+                </button>
+              </div> */}
+
+              <div className="text-xs text-muted-foreground mb-2">
+                <p>
+                  All test accounts use password:
+                  <span className="font-mono"> password123</span>
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 w-full text-xs"
+              >
+                Create Test Users
+              </button>
+            </div>
+          </div>
+
+          <div
+            data-state={activeTab === "signup" ? "active" : "inactive"}
+            role="tabpanel"
+            aria-labelledby="tab-trigger-signup"
+            id="tab-content-signup"
+            tabIndex={0}
+            className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            hidden={activeTab !== "signup"}
+          >
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div className="space-y-2">
+                <label
+                  className="text-sm font-medium"
+                  htmlFor="signup-fullname"
+                >
+                  Full Name
+                </label>
+                <input
+                  id="signup-fullname"
+                  name="fullName"
+                  type="text"
+                  placeholder="John Doe"
+                  className="flex h-10 w-full rounded-md border px-3 py-2 text-base bg-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
+                  value={formData.fullName}
+                  onChange={handleInputChange}
+                  aria-invalid="false"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="signup-email">
+                  Email
+                </label>
+                <input
+                  id="signup-email"
+                  name="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  className="flex h-10 w-full rounded-md border px-3 py-2 text-base bg-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  aria-invalid="false"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  className="text-sm font-medium"
+                  htmlFor="signup-password"
+                >
+                  Password
+                </label>
+                <input
+                  id="signup-password"
+                  name="password"
+                  type="password"
+                  placeholder="••••••••"
+                  className="flex h-10 w-full rounded-md border px-3 py-2 text-base bg-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  aria-invalid="false"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  className="text-sm font-medium"
+                  htmlFor="signup-usertype"
+                >
+                  I am a
+                </label>
+                <button
+                  type="button"
+                  role="combobox"
+                  aria-controls="user-type-dropdown"
+                  aria-expanded={isDropdownOpen}
+                  aria-autocomplete="none"
+                  dir="ltr"
+                  data-state={isDropdownOpen ? "open" : "closed"}
+                  data-placeholder=""
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
+                  onClick={toggleDropdown}
+                >
+                  <span className="pointer-events-none">
+                    {formData.userType || "Select user type"}
+                  </span>
                   <svg
-                    className="lucide lucide-info h-5 w-5 text-blue-500 mr-2"
                     xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
+                    width="24"
+                    height="24"
                     viewBox="0 0 24 24"
+                    fill="none"
                     stroke="currentColor"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    className={`lucide lucide-chevron-down h-4 w-4 opacity-50 transition-transform ${
+                      isDropdownOpen ? "rotate-180" : ""
+                    }`}
+                    aria-hidden="true"
                   >
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 16v-4" />
-                    <path d="M12 8h.01" />
+                    <path d="m6 9 6 6 6-6"></path>
                   </svg>
-                  <h3 className="text-sm font-medium">
-                    Test Accounts (for demo)
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 justify-start text-xs"
-                  >
-                    Login as Startup
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 justify-start text-xs"
-                  >
-                    Login as Individual Founder
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 justify-start text-xs"
-                  >
-                    Login as Investor
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 justify-start text-xs"
-                  >
-                    Login as Incubator
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 justify-start text-xs"
-                  >
-                    Login as Accelerator
-                  </button>
-                </div>
-
-                <div className="text-xs text-muted-foreground mb-2">
-                  <p>
-                    All test accounts use password:
-                    <span className="font-mono"> password123</span>
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 w-full text-xs"
-                >
-                  Create Test Users
                 </button>
-              </div>
-            </div>
-
-            <div
-              data-state={activeTab === "signup" ? "active" : "inactive"}
-              role="tabpanel"
-              aria-labelledby="tab-trigger-signup"
-              id="tab-content-signup"
-              tabIndex={0}
-              className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              hidden={activeTab !== "signup"}
-            >
-              <form className="space-y-4" onSubmit={handleSubmit}>
-                <div className="space-y-2">
-                  <label
-                    className="text-sm font-medium"
-                    htmlFor="signup-fullname"
-                  >
-                    Full Name
-                  </label>
-                  <input
-                    id="signup-fullname"
-                    name="fullName"
-                    type="text"
-                    placeholder="John Doe"
-                    className="flex h-10 w-full rounded-md border px-3 py-2 text-base bg-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                    value={formData.fullName}
-                    onChange={handleInputChange}
-                    aria-invalid="false"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium" htmlFor="signup-email">
-                    Email
-                  </label>
-                  <input
-                    id="signup-email"
-                    name="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    className="flex h-10 w-full rounded-md border px-3 py-2 text-base bg-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    aria-invalid="false"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label
-                    className="text-sm font-medium"
-                    htmlFor="signup-password"
-                  >
-                    Password
-                  </label>
-                  <input
-                    id="signup-password"
-                    name="password"
-                    type="password"
-                    placeholder="••••••••"
-                    className="flex h-10 w-full rounded-md border px-3 py-2 text-base bg-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    aria-invalid="false"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label
-                    className="text-sm font-medium"
-                    htmlFor="signup-usertype"
-                  >
-                    I am a
-                  </label>
-                  <button
-                    type="button"
-                    role="combobox"
-                    aria-controls="user-type-dropdown"
-                    aria-expanded={isDropdownOpen}
-                    aria-autocomplete="none"
-                    dir="ltr"
-                    data-state={isDropdownOpen ? "open" : "closed"}
-                    data-placeholder=""
-                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
-                    onClick={toggleDropdown}
-                  >
-                    <span className="pointer-events-none">
-                      {formData.userType || "Select user type"}
-                    </span>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className={`lucide lucide-chevron-down h-4 w-4 opacity-50 transition-transform ${
-                        isDropdownOpen ? "rotate-180" : ""
-                      }`}
-                      aria-hidden="true"
-                    >
-                      <path d="m6 9 6 6 6-6"></path>
-                    </svg>
-                  </button>
-                  {isDropdownOpen && (
-                    <div className="absolute z-50 mt-1 bg-popover text-popover-foreground rounded-md border shadow-md bg-white">
-                      <div className="p-1">
-                        <button
-                          type="button"
-                          className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
-                          onClick={() => handleUserTypeSelect("Startup")}
-                        >
-                          Startup
-                        </button>
-                        <button
-                          type="button"
-                          className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
-                          onClick={() =>
-                            handleUserTypeSelect("Individual Founder")
-                          }
-                        >
-                          Individual Founder
-                        </button>
-                        <button
-                          type="button"
-                          className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
-                          onClick={() => handleUserTypeSelect("Investor")}
-                        >
-                          Investor
-                        </button>
-                        <button
-                          type="button"
-                          className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
-                          onClick={() => handleUserTypeSelect("Incubator")}
-                        >
-                          Incubator
-                        </button>
-                        <button
-                          type="button"
-                          className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
-                          onClick={() => handleUserTypeSelect("Accelerator")}
-                        >
-                          Accelerator
-                        </button>
-                      </div>
+                {isDropdownOpen && (
+                  <div className="absolute z-50 mt-1 bg-popover text-popover-foreground rounded-md border shadow-md bg-white">
+                    <div className="p-1">
+                      <button
+                        type="button"
+                        className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => handleUserTypeSelect("Startup")}
+                      >
+                        Startup
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
+                        onClick={() =>
+                          handleUserTypeSelect("Individual Founder")
+                        }
+                      >
+                        Individual Founder
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => handleUserTypeSelect("Investor")}
+                      >
+                        Investor
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => handleUserTypeSelect("Incubator")}
+                      >
+                        Incubator
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => handleUserTypeSelect("Accelerator")}
+                      >
+                        Accelerator
+                      </button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+              </div>
 
-                <button
-                  type="submit"
-                  className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  Create Account
-                </button>
-              </form>
-            </div>
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                Create Account
+              </button>
+            </form>
           </div>
         </div>
 

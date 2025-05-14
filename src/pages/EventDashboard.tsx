@@ -1,141 +1,27 @@
 import Header from "../components/Header";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
-interface Event {
-  id: string;
-  type: string;
-  title: string;
-  description: string;
-  date: string;
-  location: string;
-  timeAgo: string;
-}
-
-const dummyEvents: Event[] = [
-  {
-    id: "1",
-    type: "networking",
-    title: "Investor Office Hours",
-    description:
-      "Book one-on-one sessions with venture capitalists and angel investors to pitch your startup and receive feedback.",
-    date: "2/25/2025",
-    location: "Virtual Event",
-    timeAgo: "2 months ago"
-  },
-  {
-    id: "2",
-    type: "conference",
-    title: "AI in Startups Conference",
-    description:
-      "Explore how artificial intelligence is transforming startups across industries. Featuring keynote speakers, panel discussions, and networking opportunities.",
-    date: "2/26/2025",
-    location: "Tech Convention Center, 789 Innovation Boulevard, Boston",
-    timeAgo: "2 months ago"
-  },
-  {
-    id: "3",
-    type: "workshop",
-    title: "Pitch Perfect Workshop",
-    description:
-      "Learn the art of pitching your startup to investors. Hands-on workshop with expert feedback and real-time practice sessions.",
-    date: "3/15/2025",
-    location: "Startup Hub, 123 Main Street, San Francisco",
-    timeAgo: "1 month ago"
-  },
-  {
-    id: "4",
-    type: "hackathon",
-    title: "GreenTech Hackathon 2025",
-    description:
-      "Join the 48-hour hackathon focused on sustainable technology solutions. Compete for prizes and connect with industry leaders.",
-    date: "3/20/2025",
-    location: "Innovation Center, 456 Tech Park, Seattle",
-    timeAgo: "3 weeks ago"
-  },
-  {
-    id: "5",
-    type: "networking",
-    title: "Women in Tech Meetup",
-    description:
-      "Monthly networking event for women in technology. Share experiences, build connections, and discuss career growth opportunities.",
-    date: "3/22/2025",
-    location: "The Foundry, 789 Market Street, New York",
-    timeAgo: "2 weeks ago"
-  },
-  {
-    id: "6",
-    type: "conference",
-    title: "FinTech Innovation Summit",
-    description:
-      "Annual conference showcasing the latest trends in financial technology. Featuring industry leaders and startup showcases.",
-    date: "4/5/2025",
-    location: "Financial District, 101 Wall Street, New York",
-    timeAgo: "1 week ago"
-  },
-  {
-    id: "7",
-    type: "workshop",
-    title: "Product Management Bootcamp",
-    description:
-      "Intensive 2-day workshop covering essential product management skills, from ideation to launch and beyond.",
-    date: "4/10/2025",
-    location: "Product School, 234 Tech Avenue, Austin",
-    timeAgo: "5 days ago"
-  },
-  {
-    id: "8",
-    type: "networking",
-    title: "Founder's Breakfast Club",
-    description:
-      "Weekly breakfast meetup for startup founders to share challenges, solutions, and build meaningful connections.",
-    date: "4/12/2025",
-    location: "The Startup Cafe, 567 Main Street, Chicago",
-    timeAgo: "3 days ago"
-  },
-  {
-    id: "9",
-    type: "conference",
-    title: "Blockchain & Web3 Summit",
-    description:
-      "Explore the future of decentralized technology. Keynotes, workshops, and networking with blockchain pioneers.",
-    date: "4/15/2025",
-    location: "Crypto Hub, 890 Blockchain Way, Miami",
-    timeAgo: "2 days ago"
-  },
-  {
-    id: "10",
-    type: "workshop",
-    title: "UX/UI Design Masterclass",
-    description:
-      "Hands-on workshop focusing on user experience and interface design principles for modern web applications.",
-    date: "4/18/2025",
-    location: "Design Studio, 345 Creative Lane, Los Angeles",
-    timeAgo: "1 day ago"
-  },
-  {
-    id: "11",
-    type: "networking",
-    title: "Tech Career Fair",
-    description:
-      "Connect with top tech companies and startups. Open positions in engineering, design, product, and more.",
-    date: "4/20/2025",
-    location: "Convention Center, 678 Career Drive, Denver",
-    timeAgo: "Just added"
-  },
-  {
-    id: "12",
-    type: "conference",
-    title: "Future of Work Summit",
-    description:
-      "Explore how technology is reshaping the workplace. Topics include remote work, AI integration, and digital transformation.",
-    date: "4/25/2025",
-    location: "Virtual Event",
-    timeAgo: "Just added"
-  }
-];
+// interface Event {
+//   id: string;
+//   type: string;
+//   title: string;
+//   description: string;
+//   start_date: string;
+//   location_link: string;
+//   created_at: string;
+// }
 
 const EventDashboard = () => {
+  const [events, setEvents] = useState<any[]>([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetch("http://localhost:3000/api/events/")
+      .then((res) => res.json())
+      .then((data) => setEvents(data.events))
+      .catch((err) => console.error("Failed to fetch events:", err));
+  }, []);
 
   const handleViewDetails = (eventId: string) => {
     navigate(`/event/${eventId}`);
@@ -270,7 +156,7 @@ const EventDashboard = () => {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {dummyEvents.map((event) => (
+            {events.map((event) => (
               <div
                 key={event.id}
                 className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden hover-lift transition-all duration-300 h-full flex flex-col"
@@ -289,7 +175,7 @@ const EventDashboard = () => {
                       {event.type}
                     </span>
                     <span className="text-xs text-gray-500">
-                      {event.timeAgo}
+                      {event.created_at}
                     </span>
                   </div>
                   <h3 className="font-semibold tracking-tight text-xl line-clamp-1">
@@ -319,7 +205,7 @@ const EventDashboard = () => {
                         <rect width="18" height="18" x="3" y="4" rx="2"></rect>
                         <path d="M3 10h18"></path>
                       </svg>
-                      <span>{event.date}</span>
+                      <span>{event.start_date}</span>
                     </div>
                     <div className="flex items-center text-sm text-gray-500">
                       <svg
@@ -337,7 +223,7 @@ const EventDashboard = () => {
                         <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
                         <circle cx="12" cy="10" r="3"></circle>
                       </svg>
-                      <span>{event.location}</span>
+                      <span>{event.location_link}</span>
                     </div>
                   </div>
                 </div>
