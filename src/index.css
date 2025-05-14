@@ -23,6 +23,8 @@
   --input: 214.3 31.8% 91.4%;
   --ring: 221 83% 53%;
   --radius: 1rem;
+  --sidebar-width: 16rem;
+  --sidebar-width-icon: 3rem;
 }
 
 body {
@@ -212,4 +214,36 @@ body {
 
 .bg-secondary\/10 {
   background-color: hsl(var(--secondary) / .1);
+}
+
+.text-accent-foreground {
+  color: hsl(var(--accent-foreground));
+}
+
+.text-destructive {
+  color: hsl(var(--destructive));
+}
+
+.bg-destructive {
+  background-color: hsl(var(--destructive));
+}
+
+.text-destructive-foreground {
+  color: hsl(var(--destructive-foreground));
+}
+
+.focus-visible\:ring-ring:focus-visible {
+  --tw-ring-color: hsl(var(--ring));
+}
+
+.border-primary {
+  border-color: hsl(var(--primary));
+}
+
+.data-\[state\=active\]\:bg-background[data-state=active] {
+  background-color: hsl(var(--background));
+}
+
+.data-\[state\=active\]\:text-foreground[data-state=active] {
+  color: hsl(var(--foreground));
 }
