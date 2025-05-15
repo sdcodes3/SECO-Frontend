@@ -9,6 +9,8 @@ import { useNavigate } from "react-router-dom";
 import { AuthResponse } from "../types/auth";
 // import { LinkedIn } from "@react-oauth/linkedin";
 import { createClient } from "@supabase/supabase-js";
+import axiosInstance from "../utils/axios";
+import API_CONSTANTS from "../utils/apiConstants";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL!,
@@ -59,43 +61,26 @@ const LoginSignUp = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const endpoint = activeTab === "login" ? "/login" : "/signup";
-      const response = await fetch(
-        `http://localhost:3000/api/auth${endpoint}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(
-            activeTab === "login"
-              ? {
-                  email: formData.email,
-                  password: formData.password
-                }
-              : {
-                  name: formData.fullName,
-                  email: formData.email,
-                  password: formData.password,
-                  role: formData.userType.toLowerCase()
-                }
-          )
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Authentication failed");
+      const endpoint = activeTab === "login" ? "LOGIN" : "SIGNUP";
+      const response = await axiosInstance.post(API_CONSTANTS[endpoint], {
+        ...(activeTab === "login"
+          ? {
+              email: formData.email,
+              password: formData.password
+            }
+          : {
+              name: formData.fullName,
+              email: formData.email,
+              password: formData.password,
+              role: formData.userType.toLowerCase()
+            })
+      });
+      if (response.status === 200) {
+        const data = response.data;
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        navigate("/dashboard");
       }
-
-      const data = await response.json();
-
-      // Store the token and user data
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-
-      // Redirect to dashboard
-      navigate("/dashboard");
     } catch (error: any) {
       console.error("Authentication error:", error);
       alert(error.message || "Authentication failed. Please try again.");
@@ -117,6 +102,20 @@ const LoginSignUp = () => {
   const handleGoogleSuccess = async (
     credentialResponse: CredentialResponse
   ) => {
+    // try {
+    //   const response = await axiosInstance.post(API_CONSTANTS.GOOGLE_LOGIN, {
+    //     credential: credentialResponse.credential
+    //   });
+    //   if (response.status === 200) {
+    //     const data = response.data;
+    //     localStorage.setItem("token", data.token);
+    //     localStorage.setItem("user", JSON.stringify(data.user));
+    //     navigate("/dashboard");
+    //   }
+    // } catch (error: any) {
+    //   console.error("Error during Google authentication:", error);
+    //   alert(error.message || "Authentication failed. Please try again.");
+    // }
     try {
       const response = await fetch("http://localhost:3000/api/auth/google", {
         method: "POST",
@@ -127,17 +126,13 @@ const LoginSignUp = () => {
           credential: credentialResponse.credential
         })
       });
-
       if (!response.ok) {
         throw new Error("Authentication failed");
       }
-
       const data: AuthResponse = await response.json();
-
       // Store the token in localStorage or your preferred state management
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
-
       // Redirect to dashboard
       navigate("/dashboard");
     } catch (error) {

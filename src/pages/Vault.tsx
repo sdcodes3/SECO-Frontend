@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import { useEffect, useState } from "react";
-import axios from "axios";
+import axiosInstance from "../utils/axios";
+import API_CONSTANTS from "../utils/apiConstants";
 
 interface Project {
   id: string;
@@ -88,15 +89,8 @@ const Vault = () => {
   const [loading, setLoading] = useState(false);
 
   const getProjects = async () => {
-    const token = localStorage.getItem("token");
-
     try {
-      const response = await axios.get("http://localhost:3000/api/projects/", {
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
-      });
+      const response = await axiosInstance.get(API_CONSTANTS.GET_ROOT_PROJECTS);
       setProject(response.data.data[0]);
     } catch (error) {
       console.error("Error fetching projects:", error);
@@ -105,16 +99,8 @@ const Vault = () => {
 
   const getProjectDetails = async (projectId: string) => {
     try {
-      const token = localStorage.getItem("token");
-
-      const response = await axios.get(
-        `http://localhost:3000/api/projects/${projectId}/sub-projects`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          }
-        }
+      const response = await axiosInstance.get(
+        API_CONSTANTS.GET_PROJECT_BY_ID(projectId)
       );
 
       if (response.data) {
@@ -142,7 +128,7 @@ const Vault = () => {
   useEffect(() => {
     const user = localStorage.getItem("user");
     if (!user) {
-      navigate("/login");
+      navigate("/auth");
       return;
     }
     getProjects();
@@ -160,24 +146,10 @@ const Vault = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const user = localStorage.getItem("user");
-      const userData = JSON.parse(user as string);
-      const token = localStorage.getItem("token");
-
-      const response = await axios.post(
-        "http://localhost:3000/api/projects/",
-        {
-          ...formData,
-          user_id: userData.id,
-          parent_id: project?.id || null
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          }
-        }
-      );
+      const response = await axiosInstance.post(API_CONSTANTS.CREATE_PROJECT, {
+        ...formData,
+        parent_id: project?.id || null
+      });
 
       if (response.data) {
         setIsNewProjectModalOpen(false);
@@ -199,21 +171,12 @@ const Vault = () => {
   };
 
   const handleEditClick = async (project: ProjectData) => {
-    const token = localStorage.getItem("token");
-
-    const response = await axios.get(
-      `http://localhost:3000/api/projects/${project.id}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
-      }
+    const response = await axiosInstance.get(
+      API_CONSTANTS.GET_PROJECT_DETAILS(project.id)
     );
 
     if (response.data) {
       // Refresh projects list
-      console.log(response.data.data);
       setSelectedProject(response.data.data);
       setFormData({
         name: response.data.data.name || "",
@@ -232,22 +195,11 @@ const Vault = () => {
 
     setLoading(true);
     try {
-      const user = localStorage.getItem("user");
-      const userData = JSON.parse(user as string);
-      const token = localStorage.getItem("token");
-
-      const response = await axios.put(
-        `http://localhost:3000/api/projects/${selectedProject.id}`,
+      const response = await axiosInstance.put(
+        API_CONSTANTS.EDIT_PROJECT(selectedProject.id),
         {
           ...formData,
-          user_id: userData.id,
           parent_id: project?.id || null
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          }
         }
       );
 

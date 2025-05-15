@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axiosInstance from "../utils/axios";
+import API_CONSTANTS from "../utils/apiConstants";
 
 interface Event {
   id: string;
@@ -24,22 +25,10 @@ const MyEvents = () => {
   useEffect(() => {
     const fetchUserEvents = async () => {
       try {
-        // Get user data from localStorage
-        const userData = localStorage.getItem("user");
-        if (!userData) {
-          setError("Please login to view your events");
-          setLoading(false);
-          return;
-        }
-
-        const user = JSON.parse(userData);
-
         // Fetch events created by the user
-        const response = await axios.get("http://localhost:3000/api/events", {
-          params: {
-            created_by: user.id
-          }
-        });
+        const response = await axiosInstance.get(
+          API_CONSTANTS.GET_EVENTS_BY_USER
+        );
 
         // Ensure the response data is an array
         const eventsData = Array.isArray(response.data)
@@ -81,11 +70,16 @@ const MyEvents = () => {
       setDeleteSuccess(null);
 
       // First, delete all form fields associated with this event
-      await axios.delete(`http://localhost:3000/api/form/${eventId}`);
+      await axiosInstance.delete(API_CONSTANTS.DELETE_FORM_BY_EVENT(eventId), {
+        params: {
+          event_id: eventId
+        }
+      });
+      console.log("Form fields deleted successfully");
 
       // Then delete the event
-      await axios.delete(`http://localhost:3000/api/events/${eventId}`);
-
+      await axiosInstance.delete(API_CONSTANTS.DELETE_EVENT(eventId));
+      console.log("Event deleted successfully");
       // Remove the deleted event from the state
       setEvents(events.filter((event) => event.id !== eventId));
 
@@ -130,7 +124,7 @@ const MyEvents = () => {
               <div className="text-center">
                 <p className="text-red-500">{error}</p>
                 <button
-                  onClick={() => navigate("/login")}
+                  onClick={() => navigate("/auth")}
                   className="mt-4 text-primary hover:underline"
                 >
                   Go to Login

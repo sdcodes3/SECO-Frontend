@@ -1,6 +1,8 @@
 import Header from "../components/Header";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import axiosInstance from "../utils/axios";
+import API_CONSTANTS from "../utils/apiConstants";
 
 // interface Event {
 //   id: string;
@@ -17,10 +19,15 @@ const EventDashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("http://localhost:3000/api/events/")
-      .then((res) => res.json())
-      .then((data) => setEvents(data.events))
-      .catch((err) => console.error("Failed to fetch events:", err));
+    const fetchEvents = async () => {
+      try {
+        const response = await axiosInstance.get(API_CONSTANTS.GET_ALL_EVENTS);
+        setEvents(response.data.events);
+      } catch (error) {
+        console.error("Failed to fetch events:", error);
+      }
+    };
+    fetchEvents();
   }, []);
 
   const handleViewDetails = (eventId: string) => {

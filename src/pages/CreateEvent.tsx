@@ -1,7 +1,8 @@
 import Sidebar from "../components/Sidebar";
 import { useState, useEffect } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import axiosInstance from "../utils/axios";
+import API_CONSTANTS from "../utils/apiConstants";
 
 interface EventFormData {
   title: string;
@@ -29,7 +30,17 @@ const CreateEvent = () => {
     type: "networking", // default value
     created_by: "" // Will be set from localStorage
   });
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
+  const [questionStep, setQuestionStep] = useState(1);
+  const [newQuestionType, setNewQuestionType] = useState<string | null>(null);
+  const [newQuestion, setNewQuestion] = useState<any>({
+    label: "",
+    type: "",
+    required: false,
+    options: [""]
+  });
 
   useEffect(() => {
     // Get user data from localStorage
@@ -69,11 +80,10 @@ const CreateEvent = () => {
         end_date: formData.end_date
       };
 
-      const response = await axios.post(
-        "http://localhost:3000/api/events",
-        formattedData
-      );
-      console.log("Event created successfully:", response.data);
+      const response = await axiosInstance.post(API_CONSTANTS.ADD_EVENT, {
+        ...formattedData,
+        created_by: formData.created_by
+      });
 
       // Make sure we're setting the event ID correctly
       if (response.data.event && response.data.event.id) {
@@ -92,19 +102,15 @@ const CreateEvent = () => {
   };
 
   const handleAddField = () => {
-    const newFieldIndex = fields.length + 1;
-    setFields([
-      ...fields,
-      {
-        id: Date.now(), // unique id
-        label: `Field ${newFieldIndex}`,
-        name: `field_${newFieldIndex}`,
-        type: "text",
-        placeholder: "",
-        description: "",
-        required: false
-      }
-    ]);
+    setShowQuestionModal(true);
+    setQuestionStep(1);
+    setNewQuestionType(null);
+    setNewQuestion({
+      label: "",
+      type: "",
+      required: false,
+      options: [""]
+    });
   };
 
   const handleSaveForm = async () => {
@@ -138,26 +144,32 @@ const CreateEvent = () => {
         required: field.required || false
       }));
 
-      console.log("Saving form fields:", formFields); // Debug log
-
-      const response = await axios.post(
-        "http://localhost:3000/api/form/add/many",
+      const response = await axiosInstance.post(
+        API_CONSTANTS.ADD_MANY_FORM,
         formFields
       );
-
-      console.log("Form fields saved successfully:", response.data);
-      setSuccess("Form fields saved successfully!");
-
-      // Clear success message after 2 seconds
-      setTimeout(() => {
-        setSuccess(null);
-      }, 2000);
+      if (response.status === 200) {
+        setSuccess("Form fields saved successfully!");
+      }
     } catch (error) {
       console.error("Error saving form fields:", error);
       setError("Failed to save form fields. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setBannerPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveBanner = () => {
+    setBannerPreview(null);
+    (document.getElementById("event-banner-input") as HTMLInputElement).value =
+      "";
   };
 
   return (
@@ -276,19 +288,107 @@ const CreateEvent = () => {
                       >
                         Event Banner
                       </label>
-                      <input
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                        placeholder="Enter event title"
-                        name="title"
-                        value=""
-                        type="file"
-                      />
-                      <p
-                        id=":rc1:-form-item-description"
-                        className="text-sm text-muted-foreground"
+                      <div
+                        className="border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center relative bg-gray-100 min-h-[180px] cursor-pointer group transition"
+                        onClick={() =>
+                          !bannerPreview &&
+                          document.getElementById("event-banner-input")?.click()
+                        }
                       >
-                        A clear, concise title for your event
-                      </p>
+                        {bannerPreview ? (
+                          <div className="w-full h-full flex items-center justify-center relative">
+                            <img
+                              src={bannerPreview}
+                              alt="Event Banner Preview"
+                              className="object-contain max-h-48 w-full rounded-lg"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition">
+                              <button
+                                type="button"
+                                className="bg-white text-black px-3 py-1 rounded shadow mr-2 flex items-center"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  document
+                                    .getElementById("event-banner-input")
+                                    ?.click();
+                                }}
+                              >
+                                <svg
+                                  className="w-4 h-4 mr-1"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+                                  <polyline points="7 9 12 4 17 9" />
+                                  <line x1="12" y1="4" x2="12" y2="16" />
+                                </svg>
+                                Change Image
+                              </button>
+                              <button
+                                type="button"
+                                className="bg-red-600 text-white px-3 py-1 rounded shadow flex items-center"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveBanner();
+                                }}
+                              >
+                                <svg
+                                  className="w-4 h-4 mr-1"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                  viewBox="0 0 24 24"
+                                >
+                                  <line x1="18" y1="6" x2="6" y2="18" />
+                                  <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center py-12 w-full">
+                            <div className="bg-gray-200 rounded-full p-6 mb-4">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="40"
+                                height="40"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                                className="text-gray-400"
+                              >
+                                <rect
+                                  x="3"
+                                  y="3"
+                                  width="18"
+                                  height="18"
+                                  rx="2"
+                                />
+                                <path d="M8.5 14.5 11 17l2.5-3.5L19 19H5l3.5-4.5z" />
+                                <circle cx="8.5" cy="8.5" r="1.5" />
+                              </svg>
+                            </div>
+                            <div className="font-semibold text-lg mb-1">
+                              Upload Event Banner
+                            </div>
+                            <div className="text-sm text-gray-500 text-center">
+                              Recommended size: 1200 x 400px (3:1 ratio). PNG,
+                              JPG up to 5MB.
+                            </div>
+                          </div>
+                        )}
+                        <input
+                          id="event-banner-input"
+                          type="file"
+                          accept="image/png, image/jpeg"
+                          className="hidden"
+                          onChange={handleBannerChange}
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -755,250 +855,237 @@ const CreateEvent = () => {
                                         fields.map((field, idx) => (
                                           <div
                                             key={field.id}
-                                            className="rounded-lg border p-6 mb-4 bg-background"
+                                            className="rounded-lg border p-6 mb-4 bg-white shadow flex flex-col gap-2"
                                           >
-                                            <div className="flex justify-between items-center mb-2">
-                                              <div>
-                                                <div className="font-semibold">
-                                                  Field {idx + 1}
-                                                </div>
-                                                <div className="text-sm text-muted-foreground capitalize">
-                                                  {field.type}
-                                                </div>
+                                            <div className="flex items-center justify-between mb-2">
+                                              <div className="flex items-center gap-2">
+                                                <span className="cursor-move text-gray-400 mr-2">
+                                                  ⋮⋮
+                                                </span>
+                                                <span className="font-semibold text-lg">
+                                                  {field.label ||
+                                                    `Question ${idx + 1}`}
+                                                </span>
+                                                <span className="text-xs text-gray-500 ml-2 capitalize">
+                                                  {field.type === "text" &&
+                                                    "Short Text"}
+                                                  {field.type === "textarea" &&
+                                                    "Long Text"}
+                                                  {field.type === "radio" &&
+                                                    "Multiple Choice"}
+                                                  {field.type === "checkbox" &&
+                                                    "Checkboxes"}
+                                                  {field.type === "date" &&
+                                                    "Date"}
+                                                  {field.type === "time" &&
+                                                    "Time"}
+                                                  {field.type === "file" &&
+                                                    "File upload"}
+                                                  {field.type === "rating" &&
+                                                    "Rating"}
+                                                </span>
                                               </div>
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  setFields(
-                                                    fields.filter(
-                                                      (f) => f.id !== field.id
-                                                    )
-                                                  )
-                                                }
-                                                className="text-red-500 hover:text-red-700"
-                                                title="Delete Field"
-                                              >
-                                                <svg
-                                                  width="20"
-                                                  height="20"
-                                                  fill="none"
-                                                  stroke="currentColor"
-                                                  strokeWidth="2"
-                                                >
-                                                  <path d="M3 6h14M8 6v10m4-10v10M5 6V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v2" />
-                                                </svg>
-                                              </button>
-                                            </div>
-                                            <div className="font-semibold mb-2">
-                                              Field Settings
-                                            </div>
-                                            <div className="mb-2">
-                                              <label className="block text-sm font-medium mb-1">
-                                                Field Label
-                                              </label>
-                                              <input
-                                                className="w-full rounded-md border px-3 py-2 mb-2"
-                                                value={field.label}
-                                                onChange={(e) => {
-                                                  const newFields = [...fields];
-                                                  newFields[idx].label =
-                                                    e.target.value;
-                                                  setFields(newFields);
-                                                }}
-                                              />
-                                            </div>
-                                            <div className="mb-2">
-                                              <label className="block text-sm font-medium mb-1">
-                                                Field Name
-                                              </label>
-                                              <input
-                                                className="w-full rounded-md border px-3 py-2 mb-1"
-                                                value={field.name}
-                                                onChange={(e) => {
-                                                  const newFields = [...fields];
-                                                  newFields[idx].name =
-                                                    e.target.value;
-                                                  setFields(newFields);
-                                                }}
-                                              />
-                                              <div className="text-xs text-muted-foreground mb-2">
-                                                Auto-generated from label (can
-                                                be edited if needed)
-                                              </div>
-                                            </div>
-                                            <div className="flex gap-2 mb-2">
-                                              <div className="flex-1">
-                                                <label className="block text-sm font-medium mb-1">
-                                                  Field Type
+                                              <div className="flex items-center gap-2">
+                                                <label className="flex items-center gap-1 cursor-pointer">
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={field.required}
+                                                    onChange={(e) => {
+                                                      const newFields = [
+                                                        ...fields
+                                                      ];
+                                                      newFields[idx].required =
+                                                        e.target.checked;
+                                                      setFields(newFields);
+                                                    }}
+                                                    className="accent-blue-600"
+                                                  />
+                                                  <span className="text-sm">
+                                                    Required
+                                                  </span>
                                                 </label>
-                                                <select
-                                                  className="w-full rounded-md border px-3 py-2"
-                                                  value={field.type}
-                                                  onChange={(e) => {
-                                                    const newFields = [
-                                                      ...fields
-                                                    ];
-                                                    newFields[idx].type =
-                                                      e.target.value;
-                                                    setFields(newFields);
-                                                  }}
-                                                >
-                                                  <option value="text">
-                                                    Text
-                                                  </option>
-                                                  <option value="email">
-                                                    Email
-                                                  </option>
-                                                  <option value="number">
-                                                    Number
-                                                  </option>
-                                                  <option value="textarea">
-                                                    Textarea
-                                                  </option>
-                                                  <option value="select">
-                                                    Select
-                                                  </option>
-                                                  <option value="checkbox">
-                                                    Checkbox
-                                                  </option>
-                                                  {/* Add more types as needed */}
-                                                </select>
-                                              </div>
-                                              <div className="flex-1">
-                                                <label className="block text-sm font-medium mb-1">
-                                                  Placeholder
-                                                </label>
-                                                <input
-                                                  className="w-full rounded-md border px-3 py-2"
-                                                  value={field.placeholder}
-                                                  onChange={(e) => {
-                                                    const newFields = [
-                                                      ...fields
-                                                    ];
-                                                    newFields[idx].placeholder =
-                                                      e.target.value;
-                                                    setFields(newFields);
-                                                  }}
-                                                />
-                                              </div>
-                                            </div>
-                                            <div className="mb-2">
-                                              <label className="block text-sm font-medium mb-1">
-                                                Description
-                                              </label>
-                                              <textarea
-                                                className="w-full rounded-md border px-3 py-2"
-                                                value={field.description}
-                                                onChange={(e) => {
-                                                  const newFields = [...fields];
-                                                  newFields[idx].description =
-                                                    e.target.value;
-                                                  setFields(newFields);
-                                                }}
-                                              />
-                                              <div className="text-xs text-muted-foreground">
-                                                Helpful explanation for the user
-                                              </div>
-                                            </div>
-                                            <div className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                                              <button
-                                                type="button"
-                                                role="checkbox"
-                                                aria-checked="false"
-                                                data-state="unchecked"
-                                                value="on"
-                                                className="peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                                                id=":rbt:-form-item"
-                                                aria-describedby=":rbt:-form-item-description"
-                                                aria-invalid="false"
-                                              ></button>
-                                              <input
-                                                type="checkbox"
-                                                aria-hidden="true"
-                                                tabIndex={-1}
-                                                value="on"
-                                                style={{
-                                                  transform:
-                                                    "translateX(-100%)",
-                                                  position: "absolute",
-                                                  pointerEvents: "none",
-                                                  opacity: 0,
-                                                  margin: 0,
-                                                  width: "16px",
-                                                  height: "16px"
-                                                }}
-                                              />
-                                              <div className="space-y-1 leading-none">
-                                                <label
-                                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                                  htmlFor=":rbt:-form-item"
-                                                >
-                                                  Required Field
-                                                </label>
-                                                <p
-                                                  id=":rbt:-form-item-description"
-                                                  className="text-sm text-muted-foreground"
-                                                >
-                                                  Make this field mandatory for
-                                                  submission
-                                                </p>
-                                              </div>
-                                            </div>
-                                            <div className="items-center p-6 flex justify-between py-3">
-                                              <div className="flex gap-2">
                                                 <button
-                                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md h-8 w-8 p-0"
-                                                  type="button"
+                                                  className="text-gray-500 hover:text-blue-600"
+                                                  title="Duplicate"
+                                                  onClick={() => {
+                                                    setFields([
+                                                      ...fields.slice(
+                                                        0,
+                                                        idx + 1
+                                                      ),
+                                                      {
+                                                        ...field,
+                                                        id: Date.now()
+                                                      },
+                                                      ...fields.slice(idx + 1)
+                                                    ]);
+                                                  }}
                                                 >
                                                   <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    width="24"
-                                                    height="24"
-                                                    viewBox="0 0 24 24"
+                                                    width="18"
+                                                    height="18"
                                                     fill="none"
                                                     stroke="currentColor"
-                                                    stroke-width="2"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    className="lucide lucide-chevron-up h-4 w-4"
+                                                    strokeWidth={2}
                                                   >
-                                                    <path d="m18 15-6-6-6 6"></path>
+                                                    <rect
+                                                      x="4"
+                                                      y="4"
+                                                      width="10"
+                                                      height="10"
+                                                      rx="2"
+                                                    />
+                                                    <rect
+                                                      x="7"
+                                                      y="7"
+                                                      width="10"
+                                                      height="10"
+                                                      rx="2"
+                                                    />
                                                   </svg>
                                                 </button>
                                                 <button
-                                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md h-8 w-8 p-0"
-                                                  type="button"
+                                                  className="text-gray-500 hover:text-red-600"
+                                                  title="Delete"
+                                                  onClick={() =>
+                                                    setFields(
+                                                      fields.filter(
+                                                        (f) => f.id !== field.id
+                                                      )
+                                                    )
+                                                  }
                                                 >
                                                   <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    width="24"
-                                                    height="24"
-                                                    viewBox="0 0 24 24"
+                                                    width="18"
+                                                    height="18"
                                                     fill="none"
                                                     stroke="currentColor"
-                                                    stroke-width="2"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    className="lucide lucide-chevron-down h-4 w-4"
+                                                    strokeWidth={2}
                                                   >
-                                                    <path d="m6 9 6 6 6-6"></path>
+                                                    <line
+                                                      x1="6"
+                                                      y1="6"
+                                                      x2="18"
+                                                      y2="18"
+                                                    />
+                                                    <line
+                                                      x1="18"
+                                                      y1="6"
+                                                      x2="6"
+                                                      y2="18"
+                                                    />
+                                                  </svg>
+                                                </button>
+                                                <button
+                                                  className="text-gray-500 hover:text-gray-800"
+                                                  title="Settings"
+                                                  // onClick={...} // implement if you want a settings modal
+                                                >
+                                                  <svg
+                                                    width="18"
+                                                    height="18"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth={2}
+                                                  >
+                                                    <circle
+                                                      cx="9"
+                                                      cy="9"
+                                                      r="7"
+                                                    />
+                                                    <path d="M9 5v4l3 3" />
                                                   </svg>
                                                 </button>
                                               </div>
-                                              <button
-                                                className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-md px-3 h-8"
-                                                type="button"
-                                                onClick={() =>
-                                                  setFields(
-                                                    fields.filter(
-                                                      (f) => f.id !== field.id
-                                                    )
-                                                  )
-                                                }
-                                              >
-                                                Remove
-                                              </button>
                                             </div>
+                                            {/* Options for radio/checkbox */}
+                                            {(field.type === "radio" ||
+                                              field.type === "checkbox") && (
+                                              <div className="ml-8">
+                                                {field.options?.map(
+                                                  (
+                                                    opt: string,
+                                                    oidx: number
+                                                  ) => (
+                                                    <div
+                                                      key={oidx}
+                                                      className="flex items-center mb-1"
+                                                    >
+                                                      <input
+                                                        type={field.type}
+                                                        className="mr-2"
+                                                        disabled
+                                                      />
+                                                      <span>
+                                                        {opt ||
+                                                          `Option ${oidx + 1}`}
+                                                      </span>
+                                                      <button
+                                                        className="ml-2 text-gray-400 hover:text-red-500"
+                                                        onClick={() => {
+                                                          const newFields = [
+                                                            ...fields
+                                                          ];
+                                                          newFields[
+                                                            idx
+                                                          ].options = newFields[
+                                                            idx
+                                                          ].options.filter(
+                                                            (
+                                                              _: any,
+                                                              i: number
+                                                            ) => i !== oidx
+                                                          );
+                                                          setFields(newFields);
+                                                        }}
+                                                        disabled={
+                                                          field.options
+                                                            .length <= 1
+                                                        }
+                                                        title="Delete Option"
+                                                      >
+                                                        <svg
+                                                          width="16"
+                                                          height="16"
+                                                          fill="none"
+                                                          stroke="currentColor"
+                                                          strokeWidth={2}
+                                                        >
+                                                          <line
+                                                            x1="4"
+                                                            y1="4"
+                                                            x2="12"
+                                                            y2="12"
+                                                          />
+                                                          <line
+                                                            x1="12"
+                                                            y1="4"
+                                                            x2="4"
+                                                            y2="12"
+                                                          />
+                                                        </svg>
+                                                      </button>
+                                                    </div>
+                                                  )
+                                                )}
+                                                <button
+                                                  className="text-blue-600 text-sm mt-1"
+                                                  onClick={(e) => {
+                                                    e.preventDefault();
+                                                    const newFields = [
+                                                      ...fields
+                                                    ];
+                                                    newFields[idx].options = [
+                                                      ...newFields[idx].options,
+                                                      ""
+                                                    ];
+                                                    setFields(newFields);
+                                                  }}
+                                                >
+                                                  + Add Option
+                                                </button>
+                                              </div>
+                                            )}
                                           </div>
                                         ))
                                       )}
@@ -1103,6 +1190,182 @@ const CreateEvent = () => {
           </div>
         )}
       </main>
+      {showQuestionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-xl p-6 relative">
+            <button
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              onClick={() => setShowQuestionModal(false)}
+            >
+              <svg
+                width="24"
+                height="24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+            <h2 className="text-xl font-bold mb-4">Questions</h2>
+            {questionStep === 1 && (
+              <>
+                <div className="mb-4 font-semibold">Add Questions</div>
+                <div className="grid grid-cols-4 gap-4 mb-6">
+                  {[
+                    { type: "text", label: "Short Text", icon: "T" },
+                    { type: "textarea", label: "Long Text", icon: "≡" },
+                    { type: "radio", label: "Multiple Choice", icon: "◯" },
+                    { type: "checkbox", label: "Checkboxes", icon: "☑" },
+                    { type: "date", label: "Date", icon: "📅" },
+                    { type: "time", label: "Time", icon: "⏰" },
+                    { type: "file", label: "File Upload", icon: "⤴" },
+                    { type: "rating", label: "Rating", icon: "★" }
+                  ].map((q) => (
+                    <button
+                      key={q.type}
+                      className="flex flex-col items-center p-4 rounded hover:bg-gray-100 transition"
+                      onClick={() => {
+                        setNewQuestionType(q.type);
+                        setNewQuestion((prev: any) => ({
+                          ...prev,
+                          type: q.type
+                        }));
+                        setQuestionStep(2);
+                      }}
+                    >
+                      <span className="text-2xl mb-2">{q.icon}</span>
+                      <span className="text-sm">{q.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200"
+                    onClick={() => setShowQuestionModal(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+            {questionStep === 2 && (
+              <>
+                {/* Question Config UI */}
+                <div className="mb-4">
+                  <input
+                    className="w-full border rounded px-3 py-2 mb-2"
+                    placeholder="Write text here"
+                    value={newQuestion.label}
+                    onChange={(e) =>
+                      setNewQuestion((prev: any) => ({
+                        ...prev,
+                        label: e.target.value
+                      }))
+                    }
+                  />
+                  {(newQuestionType === "radio" ||
+                    newQuestionType === "checkbox") && (
+                    <div>
+                      {newQuestion.options.map((opt: string, idx: number) => (
+                        <div key={idx} className="flex items-center mb-1">
+                          <input
+                            type={newQuestionType}
+                            className="mr-2"
+                            disabled
+                          />
+                          <input
+                            className="border rounded px-2 py-1 flex-1"
+                            placeholder={`Option ${idx + 1}`}
+                            value={opt}
+                            onChange={(e) => {
+                              const opts = [...newQuestion.options];
+                              opts[idx] = e.target.value;
+                              setNewQuestion((prev: any) => ({
+                                ...prev,
+                                options: opts
+                              }));
+                            }}
+                          />
+                          <button
+                            className="ml-2 text-red-500"
+                            onClick={() => {
+                              setNewQuestion((prev: any) => ({
+                                ...prev,
+                                options: prev.options.filter(
+                                  (_: any, i: number) => i !== idx
+                                )
+                              }));
+                            }}
+                            disabled={newQuestion.options.length <= 1}
+                          >
+                            🗑
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        className="text-blue-600 text-sm mt-1"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setNewQuestion((prev: any) => ({
+                            ...prev,
+                            options: [...prev.options, ""]
+                          }));
+                        }}
+                      >
+                        + Add Option
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex items-center mt-2">
+                    <input
+                      type="checkbox"
+                      className="mr-2"
+                      checked={newQuestion.required}
+                      onChange={(e) =>
+                        setNewQuestion((prev: any) => ({
+                          ...prev,
+                          required: e.target.checked
+                        }))
+                      }
+                    />
+                    <span>Required</span>
+                  </div>
+                </div>
+                <div className="flex justify-between">
+                  <button
+                    className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200"
+                    onClick={() => setQuestionStep(1)}
+                  >
+                    Back
+                  </button>
+                  <div>
+                    <button
+                      className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 mr-2"
+                      onClick={() => setShowQuestionModal(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                      onClick={() => {
+                        setFields([
+                          ...fields,
+                          { ...newQuestion, id: Date.now() }
+                        ]);
+                        setShowQuestionModal(false);
+                      }}
+                    >
+                      Save Question
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </Sidebar>
   );
 };

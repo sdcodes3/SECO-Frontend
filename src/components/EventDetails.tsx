@@ -1,7 +1,8 @@
-import Header from "./Header";
-import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { useNavigate, useParams } from "react-router-dom";
+import Header from "./Header";
+import axiosInstance from "../utils/axios";
+import API_CONSTANTS from "../utils/apiConstants";
 
 interface Event {
   id: string;
@@ -22,12 +23,17 @@ const EventDetails = () => {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const handleShare = () => {
+    window.open(`${window.location.origin}/event/${id}`, "_blank");
+  };
   useEffect(() => {
     const fetchEventDetails = async () => {
       try {
-        const response = await axios.get(
-          `http://localhost:3000/api/events/event/${id}`
+        if (!id) {
+          throw new Error("Event ID is required");
+        }
+        const response = await axiosInstance.get(
+          API_CONSTANTS.GET_EVENT_BY_ID(id)
         );
         setEvent(response.data.event);
       } catch (err) {
@@ -193,6 +199,31 @@ const EventDetails = () => {
                       <circle cx="12" cy="10" r="3"></circle>
                     </svg>
                     <span>{event.location}</span>
+                  </div>
+                </div>
+                <div className="flex items-start text-sm text-muted-foreground flex-col mt-6 gap-3">
+                  <h2 className="text-lg font-semibold">Share this event:</h2>
+                  <div
+                    className="flex items-center gap-2 bg-white rounded-sm p-2 px-4 border border-gray-200 cursor-pointer"
+                    onClick={handleShare}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="lucide lucide-share"
+                    >
+                      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                      <polyline points="16 6 12 2 8 6"></polyline>
+                      <line x1="12" x2="12" y1="2" y2="15"></line>
+                    </svg>
+                    <span>Share</span>
                   </div>
                 </div>
               </div>

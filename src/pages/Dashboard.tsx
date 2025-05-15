@@ -341,7 +341,7 @@ const Dashboard = () => {
           </div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="rounded-lg border bg-card text-card-foreground shadow-sm animate-fade-in">
+          <div className="rounded-lg border bg-card text-card-foreground shadow-sm animate-fade-in overflow-hidden">
             <div className="flex flex-col space-y-1.5 p-6">
               <h3 className="text-2xl font-semibold leading-none tracking-tight">
                 Event Types Distribution
@@ -780,7 +780,7 @@ const Dashboard = () => {
             </div>
           </div>
           <div
-            className="rounded-lg border bg-card text-card-foreground shadow-sm animate-fade-in"
+            className="rounded-lg border bg-card text-card-foreground shadow-sm animate-fade-in overflow-hidden"
             style={{ animationDelay: "0.1s" }}
           >
             <div className="flex flex-col space-y-1.5 p-6">
@@ -1633,7 +1633,7 @@ const Dashboard = () => {
             </div>
           </div>
           <div
-            className="rounded-lg border bg-card text-card-foreground shadow-sm lg:col-span-2 animate-fade-in"
+            className="rounded-lg border bg-card text-card-foreground shadow-sm lg:col-span-2 animate-fade-in overflow-hidden"
             style={{ animationDelay: "0.2s" }}
           >
             <div className="flex flex-col space-y-1.5 p-6">
