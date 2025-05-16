@@ -263,41 +263,37 @@ const EditEvent = () => {
 
   if (loading) {
     return (
-      <Sidebar>
-        <div className="p-6">
-          <div className="flex justify-center items-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading event data...</p>
-            </div>
+      <div className="p-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading event data...</p>
           </div>
         </div>
-      </Sidebar>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Sidebar>
-        <div className="p-6">
-          <div className="flex justify-center items-center h-64">
-            <div className="text-center">
-              <p className="text-red-500">{error}</p>
-              <button
-                onClick={() => navigate("/events")}
-                className="mt-4 text-primary hover:underline"
-              >
-                Back to Events
-              </button>
-            </div>
+      <div className="p-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <p className="text-red-500">{error}</p>
+            <button
+              onClick={() => navigate("/events")}
+              className="mt-4 text-primary hover:underline"
+            >
+              Back to Events
+            </button>
           </div>
         </div>
-      </Sidebar>
+      </div>
     );
   }
 
   return (
-    <Sidebar>
+    <>
       <div className="h-16 border-b px-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button
@@ -1268,7 +1264,7 @@ const EditEvent = () => {
           </div>
         </div>
       )}
-    </Sidebar>
+    </>
   );
 };
 

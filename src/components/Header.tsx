@@ -60,7 +60,7 @@ const Header = () => {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-40 py-4 px-6 transition-all duration-300 w-full ${
+      className={`sticky top-0 left-0 right-0 z-40 py-4 px-6 transition-all duration-300 w-full h-20 ${
         isScrolled ? "glass shadow-sm backdrop-blur-lg" : "bg-transparent"
       }`}
     >
@@ -97,9 +97,12 @@ const Header = () => {
             </a>
             <a
               className={`hover:text-foreground transition-all duration-200 relative py-2 flex items-center font-medium after:absolute after:bottom-0 after:bg-primary after:left-0 after:w-full after:h-0.5 ${
-                window.location.pathname === "/events" ? "text-primary" : ""
+                window.location.pathname === "/events" ||
+                window.location.pathname === "/user-events"
+                  ? "text-primary"
+                  : ""
               }`}
-              href="/events"
+              href={isLoggedIn ? "/user-events" : "/events"}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -270,7 +273,7 @@ const Header = () => {
             </a>
             <a
               className="py-2 px-4 rounded-md transition-colors flex items-center hover:bg-secondary"
-              href="/events"
+              href={isLoggedIn ? "/user-events" : "/events"}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

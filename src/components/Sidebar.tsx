@@ -54,7 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({ children }) => {
       )
     },
     {
-      path: "/events",
+      path: "/user-events",
       label: "Events",
       icon: (
         <svg
@@ -169,10 +169,10 @@ const Sidebar: React.FC<SidebarProps> = ({ children }) => {
       return location.pathname === path;
     }
     // For dynamic routes like /events/edit/:id
-    if (path === "/events") {
+    if (path === "/user-events") {
       return (
-        location.pathname.startsWith("/events") &&
-        !location.pathname.startsWith("/events/edit")
+        location.pathname.startsWith("/user-events") &&
+        !location.pathname.startsWith("/user-events/edit")
       );
     }
     return location.pathname.startsWith(path);
@@ -180,7 +180,7 @@ const Sidebar: React.FC<SidebarProps> = ({ children }) => {
 
   return (
     <div
-      className="group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar"
+      className="group/sidebar-wrapper flex has-[[data-variant=inset]]:bg-sidebar"
       style={
         {
           "--sidebar-width": "16rem",
@@ -188,7 +188,7 @@ const Sidebar: React.FC<SidebarProps> = ({ children }) => {
         } as React.CSSProperties
       }
     >
-      <div className="flex min-h-screen w-full">
+      <div className="flex min-h-screen">
         <div
           className="group peer hidden md:block text-sidebar-foreground"
           data-state="expanded"
@@ -251,7 +251,6 @@ const Sidebar: React.FC<SidebarProps> = ({ children }) => {
             </div>
           </div>
         </div>
-        <main className="w-full">{children}</main>
       </div>
     </div>
   );

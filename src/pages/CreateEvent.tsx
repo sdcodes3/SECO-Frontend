@@ -173,34 +173,8 @@ const CreateEvent = () => {
   };
 
   return (
-    <Sidebar>
-      <main className="flex-1 overflow-auto">
-        <div className="h-16 border-b px-6 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-7 w-7"
-              data-sidebar="trigger"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                className="lucide lucide-panel-left"
-              >
-                <rect width="18" height="18" x="3" y="3" rx="2"></rect>
-                <path d="M9 3v18"></path>
-              </svg>
-              <span className="sr-only">Toggle Sidebar</span>
-            </button>
-            <h1 className="text-xl font-semibold">Create Event</h1>
-          </div>
-        </div>
+    <>
+      <div className="flex-1 overflow-auto">
         {step === 1 ? (
           <div className="p-6">
             <div className="max-w-3xl mx-auto">
@@ -1189,7 +1163,7 @@ const CreateEvent = () => {
             </div>
           </div>
         )}
-      </main>
+      </div>
       {showQuestionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-xl p-6 relative">
@@ -1366,7 +1340,7 @@ const CreateEvent = () => {
           </div>
         </div>
       )}
-    </Sidebar>
+    </>
   );
 };
 

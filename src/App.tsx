@@ -11,22 +11,81 @@ import Account from "@/pages/Account";
 import EditEvent from "@/pages/EditEvent";
 import Discover from "@/pages/Discover";
 import Vault from "@/pages/Vault";
+import Layout from "@/Layout";
 
 const App = () => {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Home />} />
         <Route path="/auth" element={<LoginSignUp />} />
+        <Route path="/" element={<Home />} />
         <Route path="/events" element={<EventDashboard />} />
+
         <Route path="/event/:id" element={<EventDetails />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/create-event" element={<CreateEvent />} />
-        <Route path="/my-events" element={<MyEvents />} />
-        <Route path="/profile" element={<Account />} />
-        <Route path="/events/edit/:id" element={<EditEvent />} />
-        <Route path="/discover" element={<Discover />} />
-        <Route path="/vault" element={<Vault />} />
+        <Route
+          path="/dashboard"
+          element={
+            <Layout>
+              <Dashboard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/user-events"
+          element={
+            <Layout>
+              <EventDashboard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/create-event"
+          element={
+            <Layout>
+              <CreateEvent />
+            </Layout>
+          }
+        />
+        <Route
+          path="/my-events"
+          element={
+            <Layout>
+              <MyEvents />
+            </Layout>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <Layout>
+              <Account />
+            </Layout>
+          }
+        />
+        <Route
+          path="/events/edit/:id"
+          element={
+            <Layout>
+              <EditEvent />
+            </Layout>
+          }
+        />
+        <Route
+          path="/discover"
+          element={
+            <Layout>
+              <Discover />
+            </Layout>
+          }
+        />
+        <Route
+          path="/vault"
+          element={
+            <Layout>
+              <Vault />
+            </Layout>
+          }
+        />
       </Routes>
     </Router>
   );
