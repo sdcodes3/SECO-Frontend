@@ -1,11 +1,12 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
+import Logo from "@/assets/seco logo.png";
 
 interface SidebarProps {
   children?: React.ReactNode;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ children }) => {
+const Sidebar: React.FC<SidebarProps> = () => {
   const location = useLocation();
 
   const menuItems = [
@@ -180,7 +181,7 @@ const Sidebar: React.FC<SidebarProps> = ({ children }) => {
 
   return (
     <div
-      className="group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar"
+      className="group/sidebar-wrapper flex has-[[data-variant=inset]]:bg-sidebar"
       style={
         {
           "--sidebar-width": "16rem",
@@ -188,7 +189,7 @@ const Sidebar: React.FC<SidebarProps> = ({ children }) => {
         } as React.CSSProperties
       }
     >
-      <div className="flex min-h-screen w-full">
+      <div className="flex min-h-screen">
         <div
           className="group peer hidden md:block text-sidebar-foreground"
           data-state="expanded"
@@ -208,10 +209,7 @@ const Sidebar: React.FC<SidebarProps> = ({ children }) => {
               >
                 <div className="flex items-center px-2">
                   <Link to="/" className="flex items-center">
-                    <span className="text-xl font-bold text-gradient">
-                      Seco
-                    </span>
-                    <span className="ml-1 text-xl font-medium">Discover</span>
+                    <img src={Logo} alt="logo" width={32} className="w-20" />
                   </Link>
                 </div>
               </div>
@@ -251,7 +249,6 @@ const Sidebar: React.FC<SidebarProps> = ({ children }) => {
             </div>
           </div>
         </div>
-        <main className="w-full">{children}</main>
       </div>
     </div>
   );

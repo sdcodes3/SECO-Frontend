@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import Sidebar from "../components/Sidebar";
 import { useParams, useNavigate } from "react-router-dom";
 import axiosInstance from "../utils/axios";
 import API_CONSTANTS from "../utils/apiConstants";
+import Input from "@/components/UI/Input";
 
 interface EventFormData {
   title: string;
@@ -12,9 +12,21 @@ interface EventFormData {
   location_link: string;
   type: string;
   created_by: string;
-  capacity?: number;
-  is_virtual: boolean;
-  require_pitch_deck: boolean;
+  capacity: number | string;
+  website: string;
+  judges_emails: string;
+  is_virtual?: boolean;
+  stages?: Stage[];
+}
+
+interface Stage {
+  id: string;
+  name: string;
+  description: string;
+  start_date: string;
+  start_time: string;
+  end_date: string;
+  end_time: string;
 }
 
 const EditEvent = () => {
@@ -28,11 +40,39 @@ const EditEvent = () => {
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [questionStep, setQuestionStep] = useState(1);
   const [newQuestionType, setNewQuestionType] = useState<string | null>(null);
+
+  const [stages, setStages] = useState<Stage[]>([
+    {
+      id: "1",
+      name: "",
+      description: "",
+      start_date: "",
+      start_time: "",
+      end_date: "",
+      end_time: ""
+    }
+  ]);
   const [newQuestion, setNewQuestion] = useState<any>({
     label: "",
     type: "",
     required: false,
     options: [""]
+  });
+
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [errorFields, setErrorFields] = useState<EventFormData>({
+    title: "",
+    description: "",
+    start_date: "",
+    end_date: "",
+    location_link: "",
+    type: "",
+    capacity: "",
+    website: "",
+    judges_emails: "",
+    created_by: "",
+    is_virtual: false,
+    stages: []
   });
 
   const [formData, setFormData] = useState<EventFormData>({
@@ -45,7 +85,9 @@ const EditEvent = () => {
     created_by: "",
     capacity: 0,
     is_virtual: false,
-    require_pitch_deck: false
+    website: "",
+    judges_emails: "",
+    stages: []
   });
 
   const fetchFormFields = async (eventId: string) => {
@@ -109,6 +151,24 @@ const EditEvent = () => {
 
         const eventData = response.data.event;
 
+        // Parse stages if they exist
+        let parsedStages: Stage[] = [];
+        if (eventData.stages) {
+          try {
+            parsedStages = JSON.parse(eventData.stages).map((stage: any) => ({
+              id: stage.order.toString(),
+              name: stage.name,
+              description: stage.description,
+              start_date: stage.start_date,
+              start_time: stage.start_time,
+              end_date: stage.end_date,
+              end_time: stage.end_time
+            }));
+          } catch (error) {
+            console.error("Error parsing stages:", error);
+          }
+        }
+
         // Format dates to YYYY-MM-DD for input fields
         const formattedData = {
           ...eventData,
@@ -122,6 +182,21 @@ const EditEvent = () => {
         };
 
         setFormData(formattedData);
+        setStages(
+          parsedStages.length > 0
+            ? parsedStages
+            : [
+                {
+                  id: "1",
+                  name: "",
+                  description: "",
+                  start_date: "",
+                  start_time: "",
+                  end_date: "",
+                  end_time: ""
+                }
+              ]
+        );
         setLoading(false);
       } catch (error) {
         setError("Failed to load event data");
@@ -146,54 +221,94 @@ const EditEvent = () => {
         type === "checkbox" ? (e.target as HTMLInputElement).checked : value
     }));
   };
-
+  const validateForm = (): EventFormData => {
+    return {
+      created_by: "",
+      website: "",
+      judges_emails: "",
+      title: formData.title.trim() ? "" : "Title is required",
+      description: formData.description.trim() ? "" : "Description is required",
+      start_date: formData.start_date ? "" : "Start date is required",
+      end_date: formData.end_date ? "" : "End date is required",
+      location_link: formData.location_link.trim()
+        ? ""
+        : "Location is required",
+      type: formData.type ? "" : "Type is required",
+      capacity: ""
+    };
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
-
-      const userData = localStorage.getItem("user");
-      if (!userData) {
-        setError("Please login to update events");
-        navigate("/auth");
-        return;
-      }
-
-      const user = JSON.parse(userData);
-
-      // Validate required fields
-      if (
-        !formData.title ||
-        !formData.description ||
-        !formData.start_date ||
-        !formData.end_date
-      ) {
-        setError("Please fill in all required fields");
-        setLoading(false);
-        return;
-      }
-      if (!id) {
-        setError("Event not found");
-        return;
-      }
-      const response = await axiosInstance.put(API_CONSTANTS.EDIT_EVENT(id), {
-        ...formData,
-        created_by: user.id // Ensure we maintain the creator ID
-      });
-      if (response.status === 200) {
-        setSuccess("Event updated successfully!");
-      }
-      // Clear success message and navigate after 2 seconds
-      setTimeout(() => {
+    const errorFields = validateForm();
+    const isError = Object.values(errorFields).some((value) => value !== "");
+    console.log(errorFields);
+    console.log(isError);
+    if (isError) {
+      setErrorFields(errorFields);
+      return;
+    } else {
+      try {
+        setLoading(true);
+        setError(null);
         setSuccess(null);
-        navigate("/my-events");
-      }, 2000);
-    } catch (error) {
-      setError("Failed to update event. Please try again.");
-    } finally {
-      setLoading(false);
+
+        const userData = localStorage.getItem("user");
+        if (!userData) {
+          setError("Please login to update events");
+          navigate("/auth");
+          return;
+        }
+
+        const user = JSON.parse(userData);
+
+        // Validate required fields
+        if (
+          !formData.title ||
+          !formData.description ||
+          !formData.start_date ||
+          !formData.end_date
+        ) {
+          setError("Please fill in all required fields");
+          setLoading(false);
+          return;
+        }
+        if (!id) {
+          setError("Event not found");
+          return;
+        }
+        const formattedData = {
+          ...formData,
+          start_date: formData.start_date,
+          end_date: formData.end_date,
+          stages: JSON.stringify(
+            stages.map((stage) => ({
+              name: stage.name,
+              description: stage.description,
+              start_date: stage.start_date,
+              start_time: stage.start_time,
+              end_date: stage.end_date,
+              end_time: stage.end_time,
+              order: stages.indexOf(stage) + 1
+            }))
+          )
+        };
+        const response = await axiosInstance.put(API_CONSTANTS.EDIT_EVENT(id), {
+          ...formattedData,
+          created_by: user.id // Ensure we maintain the creator ID
+        });
+        if (response.status === 200) {
+          setSuccess("Event updated successfully!");
+        }
+        // Clear success message and navigate after 2 seconds
+        setTimeout(() => {
+          setSuccess(null);
+          navigate("/my-events");
+        }, 2000);
+      } catch (error) {
+        setError("Failed to update event. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -207,6 +322,53 @@ const EditEvent = () => {
       required: false,
       options: [""]
     });
+  };
+  const handleRemoveBanner = () => {
+    setBannerPreview(null);
+    (document.getElementById("event-banner-input") as HTMLInputElement).value =
+      "";
+  };
+
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setBannerPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleStageChange = (
+    index: number,
+    field: keyof Stage,
+    value: string
+  ) => {
+    const newStages = [...stages];
+    newStages[index] = {
+      ...newStages[index],
+      [field]: value
+    };
+    setStages(newStages);
+  };
+
+  const addStage = () => {
+    setStages([
+      ...stages,
+      {
+        id: Date.now().toString(),
+        name: "",
+        description: "",
+        start_date: "",
+        start_time: "",
+        end_date: "",
+        end_time: ""
+      }
+    ]);
+  };
+
+  const removeStage = (index: number) => {
+    if (stages.length > 1) {
+      const newStages = stages.filter((_, i) => i !== index);
+      setStages(newStages);
+    }
   };
 
   const handleSaveForm = async () => {
@@ -263,64 +425,37 @@ const EditEvent = () => {
 
   if (loading) {
     return (
-      <Sidebar>
-        <div className="p-6">
-          <div className="flex justify-center items-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading event data...</p>
-            </div>
+      <div className="p-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading event data...</p>
           </div>
         </div>
-      </Sidebar>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Sidebar>
-        <div className="p-6">
-          <div className="flex justify-center items-center h-64">
-            <div className="text-center">
-              <p className="text-red-500">{error}</p>
-              <button
-                onClick={() => navigate("/events")}
-                className="mt-4 text-primary hover:underline"
-              >
-                Back to Events
-              </button>
-            </div>
+      <div className="p-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <p className="text-red-500">{error}</p>
+            <button
+              onClick={() => navigate("/events")}
+              className="mt-4 text-primary hover:underline"
+            >
+              Back to Events
+            </button>
           </div>
         </div>
-      </Sidebar>
+      </div>
     );
   }
 
   return (
-    <Sidebar>
-      <div className="h-16 border-b px-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-7 w-7"
-            data-sidebar="trigger"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="lucide lucide-panel-left"
-            >
-              <rect width="18" height="18" x="3" y="3" rx="2"></rect>
-            </svg>
-          </button>
-        </div>
-      </div>
+    <>
       <div className="p-6">
         <div className="max-w-3xl mx-auto">
           <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
@@ -469,86 +604,377 @@ const EditEvent = () => {
                     className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     style={{ animationDuration: "0s" }}
                   >
-                    <form className="space-y-6" onSubmit={handleSubmit}>
+                    <form className="space-y-6">
                       <div className="space-y-2">
-                        <label
-                          className="text-sm font-medium leading-none"
-                          htmlFor="title"
-                        >
-                          Event Title
-                        </label>
-                        <input
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                          placeholder="Enter event title"
-                          name="title"
-                          id="title"
+                        <Input
                           value={formData.title}
-                          onChange={handleInputChange}
+                          handleChange={handleInputChange}
+                          label="Event Title"
+                          name="title"
+                          type="text"
+                          placeholder="Enter event title"
+                          description="A clear, concise title for your event"
+                          error={errorFields.title}
                         />
                       </div>
                       <div className="space-y-2">
                         <label
-                          className="text-sm font-medium leading-none"
-                          htmlFor="description"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          htmlFor=":rc1:-form-item"
                         >
-                          Event Description
+                          Event Banner
                         </label>
-                        <textarea
-                          className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          placeholder="Describe your event..."
-                          name="description"
-                          id="description"
-                          value={formData.description}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2 flex flex-col">
-                          <label
-                            className="text-sm font-medium leading-none"
-                            htmlFor="start_date"
-                          >
-                            Start Date
-                          </label>
+                        <div
+                          className="border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center relative bg-gray-100 min-h-[180px] cursor-pointer group transition"
+                          onClick={() =>
+                            !bannerPreview &&
+                            document
+                              .getElementById("event-banner-input")
+                              ?.click()
+                          }
+                        >
+                          {bannerPreview ? (
+                            <div className="w-full h-full flex items-center justify-center relative">
+                              <img
+                                src={bannerPreview}
+                                alt="Event Banner Preview"
+                                className="object-contain max-h-48 w-full rounded-lg"
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition">
+                                <button
+                                  type="button"
+                                  className="bg-white text-black px-3 py-1 rounded shadow mr-2 flex items-center"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    document
+                                      .getElementById("event-banner-input")
+                                      ?.click();
+                                  }}
+                                >
+                                  <svg
+                                    className="w-4 h-4 mr-1"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+                                    <polyline points="7 9 12 4 17 9" />
+                                    <line x1="12" y1="4" x2="12" y2="16" />
+                                  </svg>
+                                  Change Image
+                                </button>
+                                <button
+                                  type="button"
+                                  className="bg-red-600 text-white px-3 py-1 rounded shadow flex items-center"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveBanner();
+                                  }}
+                                >
+                                  <svg
+                                    className="w-4 h-4 mr-1"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                  </svg>
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center py-12 w-full">
+                              <div className="bg-gray-200 rounded-full p-6 mb-4">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="40"
+                                  height="40"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                  className="text-gray-400"
+                                >
+                                  <rect
+                                    x="3"
+                                    y="3"
+                                    width="18"
+                                    height="18"
+                                    rx="2"
+                                  />
+                                  <path d="M8.5 14.5 11 17l2.5-3.5L19 19H5l3.5-4.5z" />
+                                  <circle cx="8.5" cy="8.5" r="1.5" />
+                                </svg>
+                              </div>
+                              <div className="font-semibold text-lg mb-1">
+                                Upload Event Banner
+                              </div>
+                              <div className="text-sm text-gray-500 text-center">
+                                Recommended size: 1200 x 400px (3:1 ratio). PNG,
+                                JPG up to 5MB.
+                              </div>
+                            </div>
+                          )}
                           <input
-                            type="date"
-                            name="start_date"
-                            id="start_date"
-                            value={formData.start_date}
-                            onChange={handleInputChange}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
+                            id="event-banner-input"
+                            type="file"
+                            accept="image/png, image/jpeg"
+                            className="hidden"
+                            onChange={handleBannerChange}
                           />
                         </div>
-                        <div className="space-y-2 flex flex-col">
-                          <label
-                            className="text-sm font-medium leading-none"
-                            htmlFor="end_date"
+                      </div>
+
+                      <div className="space-y-2">
+                        {/* <label
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        htmlFor=":rc2:-form-item"
+                      >
+                        Event Description
+                      </label>
+                      <textarea
+                        className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        placeholder="Describe your event..."
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
+                      ></textarea>
+                      <p
+                        id=":rc2:-form-item-description"
+                        className="text-sm text-muted-foreground"
+                      >
+                        Provide details about your event
+                      </p> */}
+                        <Input
+                          value={formData.description}
+                          handleChange={handleInputChange}
+                          label="Event Description"
+                          name="description"
+                          type="textarea"
+                          placeholder="Describe your event..."
+                          description="Provide details about your event"
+                          error={errorFields.description}
+                        />
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <h3 className="text-lg font-semibold">
+                            Event Stages
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={addStage}
+                            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
                           >
-                            End Date
-                          </label>
-                          <input
-                            type="date"
-                            name="end_date"
-                            id="end_date"
-                            value={formData.end_date}
-                            onChange={handleInputChange}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                          />
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              className="lucide lucide-plus mr-1 h-4 w-4"
+                            >
+                              <path d="M5 12h14"></path>
+                              <path d="M12 5v14"></path>
+                            </svg>
+                            Add Stage
+                          </button>
+                        </div>
+
+                        <div className="space-y-4">
+                          {stages.map((stage, index) => (
+                            <div
+                              key={stage.id}
+                              className="rounded-lg border bg-card p-6"
+                            >
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">
+                                    Stage {index + 1}
+                                  </span>
+                                </div>
+                                {stages.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeStage(index)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="24"
+                                      height="24"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      stroke-width="2"
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      className="h-5 w-5"
+                                    >
+                                      <path d="M3 6h18" />
+                                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <label
+                                    className="text-sm font-medium leading-none"
+                                    htmlFor={`stage_name_${index}`}
+                                  >
+                                    Stage Name
+                                  </label>
+                                  <input
+                                    type="text"
+                                    id={`stage_name_${index}`}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    value={stage.name}
+                                    onChange={(e) =>
+                                      handleStageChange(
+                                        index,
+                                        "name",
+                                        e.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <label
+                                    className="text-sm font-medium leading-none"
+                                    htmlFor={`stage_description_${index}`}
+                                  >
+                                    Stage Description
+                                  </label>
+                                  <textarea
+                                    id={`stage_description_${index}`}
+                                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    value={stage.description}
+                                    onChange={(e) =>
+                                      handleStageChange(
+                                        index,
+                                        "description",
+                                        e.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <label
+                                    className="text-sm font-medium leading-none"
+                                    htmlFor={`stage_start_date_${index}`}
+                                  >
+                                    Start Date
+                                  </label>
+                                  <input
+                                    type="date"
+                                    id={`stage_start_date_${index}`}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    value={stage.start_date}
+                                    onChange={(e) =>
+                                      handleStageChange(
+                                        index,
+                                        "start_date",
+                                        e.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <label
+                                    className="text-sm font-medium leading-none"
+                                    htmlFor={`stage_start_time_${index}`}
+                                  >
+                                    Start Time
+                                  </label>
+                                  <input
+                                    type="time"
+                                    id={`stage_start_time_${index}`}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    value={stage.start_time}
+                                    onChange={(e) =>
+                                      handleStageChange(
+                                        index,
+                                        "start_time",
+                                        e.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <label
+                                    className="text-sm font-medium leading-none"
+                                    htmlFor={`stage_end_date_${index}`}
+                                  >
+                                    End Date
+                                  </label>
+                                  <input
+                                    type="date"
+                                    id={`stage_end_date_${index}`}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    value={stage.end_date}
+                                    onChange={(e) =>
+                                      handleStageChange(
+                                        index,
+                                        "end_date",
+                                        e.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <label
+                                    className="text-sm font-medium leading-none"
+                                    htmlFor={`stage_end_time_${index}`}
+                                  >
+                                    End Time
+                                  </label>
+                                  <input
+                                    type="time"
+                                    id={`stage_end_time_${index}`}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    value={stage.end_time}
+                                    onChange={(e) =>
+                                      handleStageChange(
+                                        index,
+                                        "end_time",
+                                        e.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                       <div className="space-y-2">
                         <label
                           className="text-sm font-medium leading-none"
-                          htmlFor="type"
+                          htmlFor=":rc9:-form-item"
                         >
                           Event Type
                         </label>
                         <select
+                          className="w-full rounded-md border px-3 py-2"
                           name="type"
-                          id="type"
                           value={formData.type}
                           onChange={handleInputChange}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
                         >
                           <option value="networking">Networking</option>
                           <option value="pitch">Pitch</option>
@@ -559,47 +985,28 @@ const EditEvent = () => {
                           <option value="other">Other</option>
                         </select>
                       </div>
+
                       <div className="space-y-2">
-                        <label
-                          className="text-sm font-medium leading-none"
-                          htmlFor="location_link"
-                        >
-                          Location
-                        </label>
-                        <input
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                          placeholder="Event venue or address"
-                          name="location_link"
-                          id="location_link"
-                          value={formData.location_link}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label
-                          className="text-sm font-medium leading-none"
-                          htmlFor="capacity"
-                        >
-                          Capacity (optional)
-                        </label>
-                        <input
-                          type="number"
+                        <Input
+                          value={formData.capacity?.toString()}
+                          handleChange={handleInputChange}
+                          label="Capacity"
                           name="capacity"
-                          id="capacity"
-                          value={formData.capacity}
-                          onChange={handleInputChange}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
+                          type="number"
                           placeholder="Maximum number of attendees"
+                          description="Leave empty for unlimited capacity"
+                          error={errorFields.capacity.toString()}
                         />
                       </div>
-                      <div className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+
+                      <div className="flex flex-row items-start space-x-3 border p-4 rounded-md">
                         <input
                           type="checkbox"
                           name="is_virtual"
                           id="is_virtual"
                           checked={formData.is_virtual}
                           onChange={handleInputChange}
-                          className="h-4 w-4 rounded border-gray-300"
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                         />
                         <div className="space-y-1 leading-none">
                           <label
@@ -613,50 +1020,57 @@ const EditEvent = () => {
                           </p>
                         </div>
                       </div>
-                      <div className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                        <input
-                          type="checkbox"
-                          name="require_pitch_deck"
-                          id="require_pitch_deck"
-                          checked={formData.require_pitch_deck}
-                          onChange={handleInputChange}
-                          className="h-4 w-4 rounded border-gray-300"
+
+                      <div className="space-y-2">
+                        <Input
+                          value={formData.location_link}
+                          handleChange={handleInputChange}
+                          label="Location"
+                          name="location_link"
+                          type="text"
+                          placeholder="Event venue or address"
+                          error={errorFields.location_link}
                         />
-                        <div className="space-y-1 leading-none">
-                          <label
-                            className="text-sm font-medium leading-none"
-                            htmlFor="require_pitch_deck"
-                          >
-                            Require Pitch Deck
-                          </label>
+                        {formData.is_virtual && (
                           <p className="text-sm text-muted-foreground">
-                            Check this if participants should submit a pitch
-                            deck when registering
+                            Please provide a valid Zoom meeting link
                           </p>
-                        </div>
+                        )}
                       </div>
+                      <div className="space-y-2">
+                        <Input
+                          value={formData.website}
+                          handleChange={handleInputChange}
+                          label="Website"
+                          name="website"
+                          type="text"
+                          placeholder="https://example.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Input
+                          value={formData.judges_emails}
+                          handleChange={handleInputChange}
+                          label="Judges' Emails"
+                          name="judges_emails"
+                          type="text"
+                          placeholder="Enter email addresses separated by commas"
+                        />
+                      </div>
+
                       <div className="flex justify-end space-x-4">
                         <button
                           type="button"
-                          onClick={() => navigate("/events")}
                           className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
-                          disabled={loading}
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
                           className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-                          disabled={loading}
+                          onClick={handleSubmit}
                         >
-                          {loading ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                              Saving...
-                            </>
-                          ) : (
-                            "Save Changes"
-                          )}
+                          Save changes
                         </button>
                       </div>
                     </form>
@@ -1268,7 +1682,7 @@ const EditEvent = () => {
           </div>
         </div>
       )}
-    </Sidebar>
+    </>
   );
 };
 

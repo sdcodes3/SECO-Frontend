@@ -1,8 +1,8 @@
-import Sidebar from "../components/Sidebar";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../utils/axios";
 import API_CONSTANTS from "../utils/apiConstants";
+import Input from "@/components/UI/Input";
 
 interface EventFormData {
   title: string;
@@ -12,15 +12,55 @@ interface EventFormData {
   location_link: string;
   type: string;
   created_by: string;
+  capacity: number | string;
+  website: string;
+  judges_emails: string;
+  is_virtual?: boolean;
+  stages?: Stage[];
+}
+
+interface Stage {
+  id: string;
+  name: string;
+  description: string;
+  start_date: string;
+  start_time: string;
+  end_date: string;
+  end_time: string;
 }
 
 const CreateEvent = () => {
   const [step, setStep] = useState(1);
   const [fields, setFields] = useState<any[]>([]);
+  const [stages, setStages] = useState<Stage[]>([
+    {
+      id: "1",
+      name: "",
+      description: "",
+      start_date: "",
+      start_time: "",
+      end_date: "",
+      end_time: ""
+    }
+  ]);
   const [eventId, setEventId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [errorFields, setErrorFields] = useState<EventFormData>({
+    title: "",
+    description: "",
+    start_date: "",
+    end_date: "",
+    location_link: "",
+    type: "",
+    capacity: "",
+    website: "",
+    judges_emails: "",
+    created_by: "",
+    is_virtual: false,
+    stages: []
+  });
   const [formData, setFormData] = useState<EventFormData>({
     title: "",
     description: "",
@@ -28,7 +68,12 @@ const CreateEvent = () => {
     end_date: new Date().toISOString().split("T")[0], // Format: YYYY-MM-DD
     location_link: "",
     type: "networking", // default value
-    created_by: "" // Will be set from localStorage
+    created_by: "", // Will be set from localStorage,
+    capacity: 0,
+    website: "",
+    judges_emails: "",
+    is_virtual: false,
+    stages: []
   });
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -59,45 +104,81 @@ const CreateEvent = () => {
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]:
+        type === "checkbox" ? (e.target as HTMLInputElement).checked : value
     }));
   };
-
+  const validateForm = (): EventFormData => {
+    return {
+      created_by: "",
+      website: "",
+      judges_emails: "",
+      title: formData.title.trim() ? "" : "Title is required",
+      description: formData.description.trim() ? "" : "Description is required",
+      start_date: formData.start_date ? "" : "Start date is required",
+      end_date: formData.end_date ? "" : "End date is required",
+      location_link: formData.location_link.trim()
+        ? ""
+        : "Location is required",
+      type: formData.type ? "" : "Type is required",
+      capacity: ""
+    };
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
+    const errorFields = validateForm();
+    const isError = Object.values(errorFields).some((value) => value !== "");
+    console.log(errorFields);
+    console.log(isError);
+    if (isError) {
+      setErrorFields(errorFields);
+      return;
+    } else {
+      try {
+        setLoading(true);
+        setError(null);
+        setSuccess(null);
 
-      // Format dates for Supabase (YYYY-MM-DD)
-      const formattedData = {
-        ...formData,
-        start_date: formData.start_date,
-        end_date: formData.end_date
-      };
+        // Format dates for Supabase (YYYY-MM-DD)
+        const formattedData = {
+          ...formData,
+          start_date: formData.start_date,
+          end_date: formData.end_date,
+          stages: JSON.stringify(
+            stages.map((stage) => ({
+              name: stage.name,
+              description: stage.description,
+              start_date: stage.start_date,
+              start_time: stage.start_time,
+              end_date: stage.end_date,
+              end_time: stage.end_time,
+              order: stages.indexOf(stage) + 1
+            }))
+          )
+        };
 
-      const response = await axiosInstance.post(API_CONSTANTS.ADD_EVENT, {
-        ...formattedData,
-        created_by: formData.created_by
-      });
+        const response = await axiosInstance.post(API_CONSTANTS.ADD_EVENT, {
+          ...formattedData,
+          created_by: formData.created_by
+        });
 
-      // Make sure we're setting the event ID correctly
-      if (response.data.event && response.data.event.id) {
-        setEventId(response.data.event.id);
-        setSuccess("Event created successfully!");
-        setStep(2);
-      } else {
-        setError("Failed to get event ID from response");
+        // Make sure we're setting the event ID correctly
+        if (response.data.event && response.data.event.id) {
+          setEventId(response.data.event.id);
+          setSuccess("Event created successfully!");
+          setStep(2);
+        } else {
+          setError("Failed to get event ID from response");
+        }
+      } catch (error) {
+        console.error("Error creating event:", error);
+        setError("Failed to create event. Please try again.");
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error creating event:", error);
-      setError("Failed to create event. Please try again.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -172,35 +253,44 @@ const CreateEvent = () => {
       "";
   };
 
+  const handleStageChange = (
+    index: number,
+    field: keyof Stage,
+    value: string
+  ) => {
+    const newStages = [...stages];
+    newStages[index] = {
+      ...newStages[index],
+      [field]: value
+    };
+    setStages(newStages);
+  };
+
+  const addStage = () => {
+    setStages([
+      ...stages,
+      {
+        id: Date.now().toString(),
+        name: "",
+        description: "",
+        start_date: "",
+        start_time: "",
+        end_date: "",
+        end_time: ""
+      }
+    ]);
+  };
+
+  const removeStage = (index: number) => {
+    if (stages.length > 1) {
+      const newStages = stages.filter((_, i) => i !== index);
+      setStages(newStages);
+    }
+  };
+
   return (
-    <Sidebar>
-      <main className="flex-1 overflow-auto">
-        <div className="h-16 border-b px-6 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-7 w-7"
-              data-sidebar="trigger"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                className="lucide lucide-panel-left"
-              >
-                <rect width="18" height="18" x="3" y="3" rx="2"></rect>
-                <path d="M9 3v18"></path>
-              </svg>
-              <span className="sr-only">Toggle Sidebar</span>
-            </button>
-            <h1 className="text-xl font-semibold">Create Event</h1>
-          </div>
-        </div>
+    <>
+      <div className="flex-1 overflow-auto">
         {step === 1 ? (
           <div className="p-6">
             <div className="max-w-3xl mx-auto">
@@ -260,26 +350,16 @@ const CreateEvent = () => {
                 <div className="p-6 pt-0">
                   <form className="space-y-6">
                     <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        htmlFor=":rc1:-form-item"
-                      >
-                        Event Title
-                      </label>
-                      <input
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                        placeholder="Enter event title"
+                      <Input
+                        value={formData.title}
+                        handleChange={handleInputChange}
+                        label="Event Title"
                         name="title"
                         type="text"
-                        value={formData.title}
-                        onChange={handleInputChange}
+                        placeholder="Enter event title"
+                        description="A clear, concise title for your event"
+                        error={errorFields.title}
                       />
-                      <p
-                        id=":rc1:-form-item-description"
-                        className="text-sm text-muted-foreground"
-                      >
-                        A clear, concise title for your event
-                      </p>
                     </div>
                     <div className="space-y-2">
                       <label
@@ -392,7 +472,7 @@ const CreateEvent = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <label
+                      {/* <label
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         htmlFor=":rc2:-form-item"
                       >
@@ -410,39 +490,25 @@ const CreateEvent = () => {
                         className="text-sm text-muted-foreground"
                       >
                         Provide details about your event
-                      </p>
+                      </p> */}
+                      <Input
+                        value={formData.description}
+                        handleChange={handleInputChange}
+                        label="Event Description"
+                        name="description"
+                        type="textarea"
+                        placeholder="Describe your event..."
+                        description="Provide details about your event"
+                        error={errorFields.description}
+                      />
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2 flex flex-col">
-                        <label
-                          className="text-sm font-medium leading-none"
-                          htmlFor="start_date"
-                        >
-                          Start Date
-                        </label>
-                        <input
-                          type="date"
-                          name="start_date"
-                          id="start_date"
-                          value={formData.start_date}
-                          onChange={handleInputChange}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label
-                          className="text-sm font-medium leading-none"
-                          htmlFor=":rc5:-form-item"
-                        >
-                          Start Time
-                        </label>
-                        <div
-                          className="flex items-center"
-                          id=":r1g6:-form-item"
-                          aria-describedby=":r1g6:-form-item-description"
-                          aria-invalid="false"
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-semibold">Event Stages</h3>
+                        <button
+                          type="button"
+                          onClick={addStage}
+                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -454,70 +520,189 @@ const CreateEvent = () => {
                             stroke-width="2"
                             stroke-linecap="round"
                             stroke-linejoin="round"
-                            className="lucide lucide-clock mr-2 h-4 w-4 text-muted-foreground"
+                            className="lucide lucide-plus mr-1 h-4 w-4"
                           >
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <polyline points="12 6 12 12 16 14"></polyline>
+                            <path d="M5 12h14"></path>
+                            <path d="M12 5v14"></path>
                           </svg>
-                          <input
-                            type="time"
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                            name="start_time"
-                            value="09:00"
-                          />
-                        </div>
+                          Add Stage
+                        </button>
                       </div>
 
-                      <div className="space-y-2 flex flex-col">
-                        <label
-                          className="text-sm font-medium leading-none"
-                          htmlFor="end_date"
-                        >
-                          End Date
-                        </label>
-                        <input
-                          type="date"
-                          name="end_date"
-                          id="end_date"
-                          value={formData.end_date}
-                          onChange={handleInputChange}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label
-                          className="text-sm font-medium leading-none"
-                          htmlFor=":rc8:-form-item"
-                        >
-                          End Time
-                        </label>
-                        <div className="flex items-center">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            className="lucide lucide-clock mr-2 h-4 w-4 text-muted-foreground"
+                      <div className="space-y-4">
+                        {stages.map((stage, index) => (
+                          <div
+                            key={stage.id}
+                            className="rounded-lg border bg-card p-6"
                           >
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <polyline points="12 6 12 12 16 14"></polyline>
-                          </svg>
-                          <input
-                            type="time"
-                            name="end_time"
-                            value="10:00"
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                          />
-                        </div>
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  Stage {index + 1}
+                                </span>
+                              </div>
+                              {stages.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeStage(index)}
+                                  className="text-red-500 hover:text-red-700"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    className="h-5 w-5"
+                                  >
+                                    <path d="M3 6h18" />
+                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label
+                                  className="text-sm font-medium leading-none"
+                                  htmlFor={`stage_name_${index}`}
+                                >
+                                  Stage Name
+                                </label>
+                                <input
+                                  type="text"
+                                  id={`stage_name_${index}`}
+                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                  value={stage.name}
+                                  onChange={(e) =>
+                                    handleStageChange(
+                                      index,
+                                      "name",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </div>
+
+                              <div className="space-y-2">
+                                <label
+                                  className="text-sm font-medium leading-none"
+                                  htmlFor={`stage_description_${index}`}
+                                >
+                                  Stage Description
+                                </label>
+                                <textarea
+                                  id={`stage_description_${index}`}
+                                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                  value={stage.description}
+                                  onChange={(e) =>
+                                    handleStageChange(
+                                      index,
+                                      "description",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </div>
+
+                              <div className="space-y-2">
+                                <label
+                                  className="text-sm font-medium leading-none"
+                                  htmlFor={`stage_start_date_${index}`}
+                                >
+                                  Start Date
+                                </label>
+                                <input
+                                  type="date"
+                                  id={`stage_start_date_${index}`}
+                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                  value={stage.start_date}
+                                  onChange={(e) =>
+                                    handleStageChange(
+                                      index,
+                                      "start_date",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </div>
+
+                              <div className="space-y-2">
+                                <label
+                                  className="text-sm font-medium leading-none"
+                                  htmlFor={`stage_start_time_${index}`}
+                                >
+                                  Start Time
+                                </label>
+                                <input
+                                  type="time"
+                                  id={`stage_start_time_${index}`}
+                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                  value={stage.start_time}
+                                  onChange={(e) =>
+                                    handleStageChange(
+                                      index,
+                                      "start_time",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </div>
+
+                              <div className="space-y-2">
+                                <label
+                                  className="text-sm font-medium leading-none"
+                                  htmlFor={`stage_end_date_${index}`}
+                                >
+                                  End Date
+                                </label>
+                                <input
+                                  type="date"
+                                  id={`stage_end_date_${index}`}
+                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                  value={stage.end_date}
+                                  onChange={(e) =>
+                                    handleStageChange(
+                                      index,
+                                      "end_date",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </div>
+
+                              <div className="space-y-2">
+                                <label
+                                  className="text-sm font-medium leading-none"
+                                  htmlFor={`stage_end_time_${index}`}
+                                >
+                                  End Time
+                                </label>
+                                <input
+                                  type="time"
+                                  id={`stage_end_time_${index}`}
+                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                  value={stage.end_time}
+                                  onChange={(e) =>
+                                    handleStageChange(
+                                      index,
+                                      "end_time",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-
                     <div className="space-y-2">
                       <label
                         className="text-sm font-medium leading-none"
@@ -525,12 +710,6 @@ const CreateEvent = () => {
                       >
                         Event Type
                       </label>
-                      <button
-                        type="button"
-                        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
-                      >
-                        Networking <svg className="lucide ..."></svg>
-                      </button>
                       <select
                         className="w-full rounded-md border px-3 py-2"
                         name="type"
@@ -548,41 +727,31 @@ const CreateEvent = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium leading-none"
-                        htmlFor=":rcb:-form-item"
-                      >
-                        Capacity (optional)
-                      </label>
-                      <input
-                        type="number"
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                        placeholder="Maximum number of attendees"
+                      <Input
+                        value={formData.capacity.toString()}
+                        handleChange={handleInputChange}
+                        label="Capacity"
                         name="capacity"
-                        id=":rcb:-form-item"
-                        value="50"
+                        type="number"
+                        placeholder="Maximum number of attendees"
+                        description="Leave empty for unlimited capacity"
+                        error={errorFields.capacity.toString()}
                       />
-                      <p className="text-sm text-muted-foreground">
-                        Leave empty for unlimited capacity
-                      </p>
                     </div>
 
                     <div className="flex flex-row items-start space-x-3 border p-4 rounded-md">
-                      <button
-                        type="button"
-                        role="checkbox"
-                        aria-checked="false"
-                        className="peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                      ></button>
                       <input
                         type="checkbox"
-                        aria-hidden="true"
-                        className="sr-only"
+                        name="is_virtual"
+                        id="is_virtual"
+                        checked={formData.is_virtual}
+                        onChange={handleInputChange}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                       />
                       <div className="space-y-1 leading-none">
                         <label
                           className="text-sm font-medium leading-none"
-                          htmlFor=":rcc:-form-item"
+                          htmlFor="is_virtual"
                         >
                           Virtual Event
                         </label>
@@ -592,73 +761,40 @@ const CreateEvent = () => {
                       </div>
                     </div>
 
-                    <div className="flex flex-row items-start space-x-3 border p-4 rounded-md">
-                      <button
-                        type="button"
-                        role="checkbox"
-                        aria-checked="false"
-                        className="peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      ></button>
-                      <input
-                        type="checkbox"
-                        aria-hidden="true"
-                        className="sr-only"
-                      />
-                      <div className="space-y-1 leading-none">
-                        <label
-                          className="text-sm font-medium leading-none"
-                          htmlFor=":rcd:-form-item"
-                        >
-                          Require Pitch Deck
-                        </label>
-                        <p className="text-sm text-muted-foreground">
-                          Check this if participants should submit a pitch deck
-                          when registering
-                        </p>
-                      </div>
-                    </div>
-
                     <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium leading-none"
-                        htmlFor=":rce:-form-item"
-                      >
-                        Location
-                      </label>
-                      <input
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                        placeholder="Event venue or address"
-                        name="location_link"
+                      <Input
                         value={formData.location_link}
-                        onChange={handleInputChange}
+                        handleChange={handleInputChange}
+                        label="Location"
+                        name="location_link"
+                        type="text"
+                        placeholder="Event venue or address"
+                        error={errorFields.location_link}
                       />
+                      {formData.is_virtual && (
+                        <p className="text-sm text-muted-foreground">
+                          Please provide a valid Zoom meeting link
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium leading-none"
-                        htmlFor=":rce:-form-item"
-                      >
-                        Website
-                      </label>
-                      <input
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                        placeholder="https://example.com"
+                      <Input
+                        value={formData.website}
+                        handleChange={handleInputChange}
+                        label="Website"
                         name="website"
-                        id=":rce:-form-item"
+                        type="text"
+                        placeholder="https://example.com"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium leading-none"
-                        htmlFor=":rce:-form-item"
-                      >
-                        Judges' Emails (Optional)
-                      </label>
-                      <input
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                        placeholder="Enter email addresses separated by commas"
+                      <Input
+                        value={formData.judges_emails}
+                        handleChange={handleInputChange}
+                        label="Judges' Emails"
                         name="judges_emails"
-                        value=""
+                        type="text"
+                        placeholder="Enter email addresses separated by commas"
                       />
                     </div>
 
@@ -1189,7 +1325,7 @@ const CreateEvent = () => {
             </div>
           </div>
         )}
-      </main>
+      </div>
       {showQuestionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-xl p-6 relative">
@@ -1366,7 +1502,7 @@ const CreateEvent = () => {
           </div>
         </div>
       )}
-    </Sidebar>
+    </>
   );
 };
 

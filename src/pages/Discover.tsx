@@ -1,8 +1,6 @@
-import Sidebar from "../components/Sidebar";
-
 const Discover = () => {
   return (
-    <Sidebar>
+    <>
       <div className="h-16 border-b px-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button
@@ -29,7 +27,7 @@ const Discover = () => {
       <div className="flex flex-col gap-4 p-6">
         <h1 className="text-2xl font-bold">Discover</h1>
       </div>
-    </Sidebar>
+    </>
   );
 };
 

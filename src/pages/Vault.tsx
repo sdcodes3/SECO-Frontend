@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import Sidebar from "../components/Sidebar";
 import { useEffect, useState } from "react";
 import axiosInstance from "../utils/axios";
 import API_CONSTANTS from "../utils/apiConstants";
@@ -223,41 +222,8 @@ const Vault = () => {
   };
 
   return (
-    <Sidebar>
-      <div className="h-16 border-b flex items-center justify-between">
-        <header className="flex h-16 items-center justify-between border-b px-4">
-          <div className="md:ml-4 flex items-center space-x-4">
-            <span className="hidden md:inline text-sm text-muted-foreground">
-              Welcome, Admin User
-            </span>
-            <span className="relative flex shrink-0 overflow-hidden rounded-full h-8 w-8">
-              <img
-                className="aspect-square h-full w-full"
-                src="https://i.pravatar.cc/150?img=1"
-              />
-            </span>
-            <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [_svg]:pointer-events-none [_svg]:size-4 [_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-10 w-10">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                className="lucide lucide-log-out h-5 w-5"
-              >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" x2="9" y1="12" y2="12"></line>
-              </svg>
-            </button>
-          </div>
-        </header>
-      </div>
-      <main className="flex-1 overflow-y-auto p-6">
+    <>
+      <div className="flex-1 overflow-y-auto p-6">
         <div className="mb-4">
           <a
             className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [_svg]:pointer-events-none [_svg]:size-4 [_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
@@ -620,7 +586,7 @@ const Vault = () => {
             ></div>
           </div>
         </div>
-      </main>
+      </div>
 
       {/* New Project Modal */}
       {isNewProjectModalOpen && (
@@ -1030,7 +996,7 @@ const Vault = () => {
           </div>
         </div>
       )}
-    </Sidebar>
+    </>
   );
 };
 

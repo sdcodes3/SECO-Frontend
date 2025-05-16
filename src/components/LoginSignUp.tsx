@@ -11,7 +11,7 @@ import { AuthResponse } from "../types/auth";
 import { createClient } from "@supabase/supabase-js";
 import axiosInstance from "../utils/axios";
 import API_CONSTANTS from "../utils/apiConstants";
-
+import useUser from "../hooks/useUser";
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL!,
   import.meta.env.VITE_SUPABASE_ANON_KEY!
@@ -19,6 +19,7 @@ const supabase = createClient(
 
 const LoginSignUp = () => {
   const navigate = useNavigate();
+  const { updateUser } = useUser();
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [formData, setFormData] = useState({
     fullName: "",
@@ -78,7 +79,7 @@ const LoginSignUp = () => {
       if (response.status === 200) {
         const data = response.data;
         localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
+        updateUser(JSON.stringify(data.user));
         navigate("/dashboard");
       }
     } catch (error: any) {

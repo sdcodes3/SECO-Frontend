@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import Sidebar from "../components/Sidebar";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../utils/axios";
 import API_CONSTANTS from "../utils/apiConstants";
+import Suspence from "@/components/Suspence";
 
 interface Event {
   id: string;
@@ -98,70 +98,8 @@ const MyEvents = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Sidebar>
-        <div className="p-6">
-          <div className="container mx-auto py-8 px-4">
-            <div className="flex justify-center items-center h-64">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-                <p className="mt-4 text-gray-600">Loading your events...</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Sidebar>
-    );
-  }
-
-  if (error) {
-    return (
-      <Sidebar>
-        <div className="p-6">
-          <div className="container mx-auto py-8 px-4">
-            <div className="flex justify-center items-center h-64">
-              <div className="text-center">
-                <p className="text-red-500">{error}</p>
-                <button
-                  onClick={() => navigate("/auth")}
-                  className="mt-4 text-primary hover:underline"
-                >
-                  Go to Login
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Sidebar>
-    );
-  }
-
   return (
-    <Sidebar>
-      <div className="h-16 border-b px-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-7 w-7"
-            data-sidebar="trigger"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="lucide lucide-panel-left"
-            >
-              <rect width="18" height="18" x="3" y="3" rx="2"></rect>
-            </svg>
-          </button>
-        </div>
-      </div>
+    <Suspence isLoading={loading} isError={!!error}>
       <div className="p-6">
         <div className="container mx-auto py-8 px-4">
           {/* Success Alert */}
@@ -421,7 +359,7 @@ const MyEvents = () => {
           )}
         </div>
       </div>
-    </Sidebar>
+    </Suspence>
   );
 };
 
