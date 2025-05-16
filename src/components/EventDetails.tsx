@@ -17,6 +17,7 @@ interface Event {
   created_by: string;
   created_at: string;
   updated_at: string;
+  stages: string; //this will be json string
 }
 
 const EventDetails = () => {
@@ -29,6 +30,7 @@ const EventDetails = () => {
   const handleShare = () => {
     window.open(`${window.location.origin}/event/${id}`, "_blank");
   };
+  const [stages, setStages] = useState<any[]>([]);
   useEffect(() => {
     const fetchEventDetails = async () => {
       try {
@@ -39,6 +41,14 @@ const EventDetails = () => {
           API_CONSTANTS.GET_EVENT_BY_ID(id)
         );
         setEvent(response.data.event);
+        if (response.data.event.stages) {
+          try {
+            setStages(JSON.parse(response.data.event.stages));
+            if (!Array.isArray(stages)) setStages([]);
+          } catch {
+            setStages([]);
+          }
+        }
       } catch (err) {
         setError("Failed to load event details");
       } finally {
@@ -72,6 +82,27 @@ const EventDetails = () => {
       minute: "numeric",
       hour12: true
     });
+  };
+
+  // Parse stages_json if present
+
+  // Helper to check if a stage is live
+  const isStageLive = (stage: any) => {
+    const now = new Date();
+    const start = new Date(
+      stage.start_date + "T" + (stage.start_time || "00:00")
+    );
+    const end = new Date(stage.end_date + "T" + (stage.end_time || "23:59"));
+    return now >= start && now <= end;
+  };
+
+  // Helper to get day and month
+  const getDayMonth = (dateString: string) => {
+    const date = new Date(dateString);
+    return {
+      day: date.getDate(),
+      month: date.toLocaleString("en-US", { month: "short" })
+    };
   };
 
   return (
@@ -243,6 +274,93 @@ const EventDetails = () => {
             >
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2">
+                  {stages.length > 0 && (
+                    <div className="mb-8">
+                      <div className="flex flex-col gap-6">
+                        {stages.map((stage, idx) => {
+                          // Format day/month
+                          const dateObj = new Date(stage.start_date);
+                          const day = dateObj.getDate();
+                          const month = dateObj.toLocaleString("en-US", {
+                            month: "short"
+                          });
+
+                          // Live logic
+                          const now = new Date();
+                          const start = new Date(
+                            stage.start_date +
+                              "T" +
+                              (stage.start_time || "00:00")
+                          );
+                          const end = new Date(
+                            stage.end_date + "T" + (stage.end_time || "23:59")
+                          );
+                          const live = now >= start && now <= end;
+
+                          return (
+                            <div key={idx} className="flex items-start gap-4">
+                              {/* Date box */}
+                              <div className="flex flex-col items-center min-w-[56px]">
+                                <div className="bg-blue-100 text-blue-700 rounded-lg px-2 py-1 text-center font-semibold text-sm mb-1">
+                                  {day}
+                                  <div className="text-xs text-gray-500 font-normal">
+                                    {month}{" "}
+                                    {String(dateObj.getFullYear()).slice(2)}
+                                  </div>
+                                </div>
+                                {/* Timeline line */}
+                                {idx < stages.length - 1 && (
+                                  <div
+                                    className="w-px bg-blue-300 flex-1 mx-auto"
+                                    style={{ minHeight: 32 }}
+                                  />
+                                )}
+                              </div>
+                              {/* Timeline circle */}
+                              {/* <div className="relative">
+                                <div className="w-3 h-3 rounded-full bg-blue-500 mt-2" />
+                                {idx < stages.length - 1 && (
+                                  <div
+                                    className="absolute left-1/2 top-3 w-px h-full bg-blue-300"
+                                    style={{ transform: "translateX(-50%)" }}
+                                  />
+                                )}
+                              </div> */}
+                              {/* Stage card */}
+                              <div className="flex-1 bg-white rounded-lg shadow border p-4 relative">
+                                {live && (
+                                  <span className="absolute top-2 right-2 text-xs text-red-600 font-semibold flex items-center gap-1">
+                                    <span className="inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>{" "}
+                                    Live
+                                  </span>
+                                )}
+                                <div className="font-bold text-lg mb-1">
+                                  {stage.name}
+                                </div>
+                                <div className="text-gray-600 mb-2 whitespace-pre-line">
+                                  {stage.description}
+                                </div>
+                                <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                                  <div>
+                                    <span className="font-medium">Start:</span>{" "}
+                                    {stage.start_date}{" "}
+                                    {stage.start_time && (
+                                      <>| {stage.start_time}</>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">End:</span>{" "}
+                                    {stage.end_date}{" "}
+                                    {stage.end_time && <>| {stage.end_time}</>}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
                     <div className="p-6 pt-6">
                       <h2 className="text-xl font-semibold mb-4">

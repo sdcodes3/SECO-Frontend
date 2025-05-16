@@ -20,6 +20,10 @@ const EventDashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check if user is logged in
+    const userData = localStorage.getItem("user");
+    setIsLoggedIn(!!userData);
+
     const fetchEvents = async () => {
       try {
         const response = await axiosInstance.get(API_CONSTANTS.GET_ALL_EVENTS);
