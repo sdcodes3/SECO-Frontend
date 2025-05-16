@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import Logo from "../assets/seco logo.png";
 import { useNavigate } from "react-router-dom";
+import useUser from "@/hooks/useUser";
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const { updateUser } = useUser();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -54,6 +56,7 @@ const Header = () => {
   const handleLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
+    updateUser(null);
     setIsLoggedIn(false);
     navigate("/");
   };
@@ -97,12 +100,9 @@ const Header = () => {
             </a>
             <a
               className={`hover:text-foreground transition-all duration-200 relative py-2 flex items-center font-medium after:absolute after:bottom-0 after:bg-primary after:left-0 after:w-full after:h-0.5 ${
-                window.location.pathname === "/events" ||
-                window.location.pathname === "/user-events"
-                  ? "text-primary"
-                  : ""
+                window.location.pathname === "/events" ? "text-primary" : ""
               }`}
-              href={isLoggedIn ? "/user-events" : "/events"}
+              href="/events"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -273,7 +273,7 @@ const Header = () => {
             </a>
             <a
               className="py-2 px-4 rounded-md transition-colors flex items-center hover:bg-secondary"
-              href={isLoggedIn ? "/user-events" : "/events"}
+              href="/events"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

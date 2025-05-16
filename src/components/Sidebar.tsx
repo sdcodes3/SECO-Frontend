@@ -54,7 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({ children }) => {
       )
     },
     {
-      path: "/user-events",
+      path: "/events",
       label: "Events",
       icon: (
         <svg
@@ -169,10 +169,10 @@ const Sidebar: React.FC<SidebarProps> = ({ children }) => {
       return location.pathname === path;
     }
     // For dynamic routes like /events/edit/:id
-    if (path === "/user-events") {
+    if (path === "/events") {
       return (
-        location.pathname.startsWith("/user-events") &&
-        !location.pathname.startsWith("/user-events/edit")
+        location.pathname.startsWith("/events") &&
+        !location.pathname.startsWith("/events/edit")
       );
     }
     return location.pathname.startsWith(path);

@@ -12,29 +12,43 @@ import EditEvent from "@/pages/EditEvent";
 import Discover from "@/pages/Discover";
 import Vault from "@/pages/Vault";
 import Layout from "@/Layout";
-
+import useUser from "@/hooks/useUser";
 const App = () => {
+  const { isLoggedIn } = useUser();
   return (
     <Router>
       <Routes>
         <Route path="/auth" element={<LoginSignUp />} />
         <Route path="/" element={<Home />} />
-        <Route path="/events" element={<EventDashboard />} />
-
-        <Route path="/event/:id" element={<EventDetails />} />
+        <Route
+          path="/events"
+          element={
+            !isLoggedIn ? (
+              <EventDashboard />
+            ) : (
+              <Layout>
+                <EventDashboard />
+              </Layout>
+            )
+          }
+        />
+        <Route
+          path="/event/:id"
+          element={
+            !isLoggedIn ? (
+              <EventDetails />
+            ) : (
+              <Layout>
+                <EventDetails />
+              </Layout>
+            )
+          }
+        />
         <Route
           path="/dashboard"
           element={
             <Layout>
               <Dashboard />
-            </Layout>
-          }
-        />
-        <Route
-          path="/user-events"
-          element={
-            <Layout>
-              <EventDashboard />
             </Layout>
           }
         />
