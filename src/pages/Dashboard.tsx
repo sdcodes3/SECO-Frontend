@@ -1,5 +1,4 @@
 import RecentConnections from "../components/RecentConnections";
-import Sidebar from "../components/Sidebar";
 import YourUpcomEvents from "../components/YourUpcomEvents";
 import { useNavigate } from "react-router-dom";
 const Dashboard = () => {

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import Sidebar from "../components/Sidebar";
 import { useParams, useNavigate } from "react-router-dom";
 import axiosInstance from "../utils/axios";
 import API_CONSTANTS from "../utils/apiConstants";
