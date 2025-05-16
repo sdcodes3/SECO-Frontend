@@ -1,17 +1,18 @@
+import "@/App.css";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import "./App.css";
-import Home from "./components/Home";
-import LoginSignUp from "./components/LoginSignUp";
-import EventDashboard from "./pages/EventDashboard";
-import EventDetails from "./components/EventDetails";
-import Dashboard from "./pages/Dashboard";
-import CreateEvent from "./pages/CreateEvent";
-import MyEvents from "./pages/MyEvents";
-import Account from "./pages/Account";
-import EditEvent from "./pages/EditEvent";
-import Discover from "./pages/Discover";
-import Vault from "./pages/Vault";
-function App() {
+import Home from "@/components/Home";
+import LoginSignUp from "@/components/LoginSignUp";
+import EventDashboard from "@/pages/EventDashboard";
+import EventDetails from "@/components/EventDetails";
+import Dashboard from "@/pages/Dashboard";
+import CreateEvent from "@/pages/CreateEvent";
+import MyEvents from "@/pages/MyEvents";
+import Account from "@/pages/Account";
+import EditEvent from "@/pages/EditEvent";
+import Discover from "@/pages/Discover";
+import Vault from "@/pages/Vault";
+
+const App = () => {
   return (
     <Router>
       <Routes>
@@ -29,6 +30,6 @@ function App() {
       </Routes>
     </Router>
   );
-}
+};
 
 export default App;
