@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
+import Logo from "@/assets/seco logo.png";
 
 interface SidebarProps {
   children?: React.ReactNode;
@@ -208,10 +209,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
               >
                 <div className="flex items-center px-2">
                   <Link to="/" className="flex items-center">
-                    <span className="text-xl font-bold text-gradient">
-                      Seco
-                    </span>
-                    <span className="ml-1 text-xl font-medium">Discover</span>
+                    <img src={Logo} alt="logo" width={32} className="w-20" />
                   </Link>
                 </div>
               </div>

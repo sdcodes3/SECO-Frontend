@@ -84,27 +84,6 @@ const EventDetails = () => {
     });
   };
 
-  // Parse stages_json if present
-
-  // Helper to check if a stage is live
-  const isStageLive = (stage: any) => {
-    const now = new Date();
-    const start = new Date(
-      stage.start_date + "T" + (stage.start_time || "00:00")
-    );
-    const end = new Date(stage.end_date + "T" + (stage.end_time || "23:59"));
-    return now >= start && now <= end;
-  };
-
-  // Helper to get day and month
-  const getDayMonth = (dateString: string) => {
-    const date = new Date(dateString);
-    return {
-      day: date.getDate(),
-      month: date.toLocaleString("en-US", { month: "short" })
-    };
-  };
-
   return (
     <Suspence isLoading={loading} isError={!!error}>
       <div>

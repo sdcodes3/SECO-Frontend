@@ -3,14 +3,6 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../utils/axios";
 import API_CONSTANTS from "../utils/apiConstants";
 import Input from "@/components/UI/Input";
-import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-  DropResult,
-  DroppableProvided,
-  DraggableProvided
-} from "react-beautiful-dnd";
 
 interface EventFormData {
   title: string;
