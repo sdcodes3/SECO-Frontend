@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../utils/axios";
 import API_CONSTANTS from "../utils/apiConstants";
+import Input from "@/components/UI/input";
 
 interface EventFormData {
   title: string;
@@ -10,7 +11,12 @@ interface EventFormData {
   end_date: string;
   location_link: string;
   type: string;
+  start_time: string;
+  end_time: string;
   created_by: string;
+  capacity: number | string;
+  website: string;
+  judges_emails: string;
 }
 
 const CreateEvent = () => {
@@ -20,6 +26,20 @@ const CreateEvent = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [errorFields, setErrorFields] = useState<EventFormData>({
+    title: "",
+    description: "",
+    start_date: "",
+    end_date: "",
+    location_link: "",
+    type: "",
+    start_time: "",
+    end_time: "",
+    capacity: "",
+    website: "",
+    judges_emails: "",
+    created_by: ""
+  });
   const [formData, setFormData] = useState<EventFormData>({
     title: "",
     description: "",
@@ -27,7 +47,12 @@ const CreateEvent = () => {
     end_date: new Date().toISOString().split("T")[0], // Format: YYYY-MM-DD
     location_link: "",
     type: "networking", // default value
-    created_by: "" // Will be set from localStorage
+    created_by: "", // Will be set from localStorage,
+    start_time: "",
+    end_time: "",
+    capacity: 0,
+    website: "",
+    judges_emails: ""
   });
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -64,39 +89,64 @@ const CreateEvent = () => {
       [name]: value
     }));
   };
-
+  const validateForm = (): EventFormData => {
+    return {
+      created_by: "",
+      website: "",
+      judges_emails: "",
+      title: formData.title.trim() ? "" : "Title is required",
+      description: formData.description.trim() ? "" : "Description is required",
+      start_date: formData.start_date ? "" : "Start date is required",
+      end_date: formData.end_date ? "" : "End date is required",
+      location_link: formData.location_link.trim()
+        ? ""
+        : "Location is required",
+      type: formData.type ? "" : "Type is required",
+      start_time: formData.start_time ? "" : "Start time is required",
+      end_time: formData.end_time ? "" : "End time is required",
+      capacity: ""
+    };
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
+    const errorFields = validateForm();
+    const isError = Object.values(errorFields).some((value) => value !== "");
 
-      // Format dates for Supabase (YYYY-MM-DD)
-      const formattedData = {
-        ...formData,
-        start_date: formData.start_date,
-        end_date: formData.end_date
-      };
+    if (isError) {
+      setErrorFields(errorFields);
+      return;
+    } else {
+      try {
+        setLoading(true);
+        setError(null);
+        setSuccess(null);
 
-      const response = await axiosInstance.post(API_CONSTANTS.ADD_EVENT, {
-        ...formattedData,
-        created_by: formData.created_by
-      });
+        // Format dates for Supabase (YYYY-MM-DD)
+        const formattedData = {
+          ...formData,
+          start_date: formData.start_date,
+          end_date: formData.end_date
+        };
 
-      // Make sure we're setting the event ID correctly
-      if (response.data.event && response.data.event.id) {
-        setEventId(response.data.event.id);
-        setSuccess("Event created successfully!");
-        setStep(2);
-      } else {
-        setError("Failed to get event ID from response");
+        const response = await axiosInstance.post(API_CONSTANTS.ADD_EVENT, {
+          ...formattedData,
+          created_by: formData.created_by
+        });
+
+        // Make sure we're setting the event ID correctly
+        if (response.data.event && response.data.event.id) {
+          setEventId(response.data.event.id);
+          setSuccess("Event created successfully!");
+          setStep(2);
+        } else {
+          setError("Failed to get event ID from response");
+        }
+      } catch (error) {
+        console.error("Error creating event:", error);
+        setError("Failed to create event. Please try again.");
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error creating event:", error);
-      setError("Failed to create event. Please try again.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -233,26 +283,16 @@ const CreateEvent = () => {
                 <div className="p-6 pt-0">
                   <form className="space-y-6">
                     <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        htmlFor=":rc1:-form-item"
-                      >
-                        Event Title
-                      </label>
-                      <input
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                        placeholder="Enter event title"
+                      <Input
+                        value={formData.title}
+                        handleChange={handleInputChange}
+                        label="Event Title"
                         name="title"
                         type="text"
-                        value={formData.title}
-                        onChange={handleInputChange}
+                        placeholder="Enter event title"
+                        description="A clear, concise title for your event"
+                        error={errorFields.title}
                       />
-                      <p
-                        id=":rc1:-form-item-description"
-                        className="text-sm text-muted-foreground"
-                      >
-                        A clear, concise title for your event
-                      </p>
                     </div>
                     <div className="space-y-2">
                       <label
@@ -365,7 +405,7 @@ const CreateEvent = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <label
+                      {/* <label
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         htmlFor=":rc2:-form-item"
                       >
@@ -383,111 +423,60 @@ const CreateEvent = () => {
                         className="text-sm text-muted-foreground"
                       >
                         Provide details about your event
-                      </p>
+                      </p> */}
+                      <Input
+                        value={formData.description}
+                        handleChange={handleInputChange}
+                        label="Event Description"
+                        name="description"
+                        type="textarea"
+                        placeholder="Describe your event..."
+                        description="Provide details about your event"
+                        error={errorFields.description}
+                      />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2 flex flex-col">
-                        <label
-                          className="text-sm font-medium leading-none"
-                          htmlFor="start_date"
-                        >
-                          Start Date
-                        </label>
-                        <input
-                          type="date"
-                          name="start_date"
-                          id="start_date"
+                        <Input
                           value={formData.start_date}
-                          onChange={handleInputChange}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label
-                          className="text-sm font-medium leading-none"
-                          htmlFor=":rc5:-form-item"
-                        >
-                          Start Time
-                        </label>
-                        <div
-                          className="flex items-center"
-                          id=":r1g6:-form-item"
-                          aria-describedby=":r1g6:-form-item-description"
-                          aria-invalid="false"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            className="lucide lucide-clock mr-2 h-4 w-4 text-muted-foreground"
-                          >
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <polyline points="12 6 12 12 16 14"></polyline>
-                          </svg>
-                          <input
-                            type="time"
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                            name="start_time"
-                            value="09:00"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2 flex flex-col">
-                        <label
-                          className="text-sm font-medium leading-none"
-                          htmlFor="end_date"
-                        >
-                          End Date
-                        </label>
-                        <input
+                          handleChange={handleInputChange}
+                          label="Start Date"
+                          name="start_date"
                           type="date"
-                          name="end_date"
-                          id="end_date"
-                          value={formData.end_date}
-                          onChange={handleInputChange}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
+                          placeholder="Select start date"
+                          error={errorFields.start_date}
                         />
                       </div>
-
-                      <div className="space-y-2">
-                        <label
-                          className="text-sm font-medium leading-none"
-                          htmlFor=":rc8:-form-item"
-                        >
-                          End Time
-                        </label>
-                        <div className="flex items-center">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            className="lucide lucide-clock mr-2 h-4 w-4 text-muted-foreground"
-                          >
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <polyline points="12 6 12 12 16 14"></polyline>
-                          </svg>
-                          <input
-                            type="time"
-                            name="end_time"
-                            value="10:00"
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                          />
-                        </div>
+                      <div className="space-y-2 flex flex-col">
+                        <Input
+                          value={formData.start_time}
+                          handleChange={handleInputChange}
+                          label="Start Time"
+                          name="start_time"
+                          type="time"
+                          error={errorFields.start_time}
+                        />
+                      </div>
+                      <div className="space-y-2 flex flex-col">
+                        <Input
+                          value={formData.end_date}
+                          handleChange={handleInputChange}
+                          label="End Date"
+                          name="end_date"
+                          type="date"
+                          error={errorFields.end_date}
+                        />
+                      </div>
+                      <div className="space-y-2 flex flex-col">
+                        <Input
+                          value={formData.end_time}
+                          handleChange={handleInputChange}
+                          label="End Time"
+                          name="end_time"
+                          type="time"
+                          error={errorFields.end_time}
+                        />
                       </div>
                     </div>
 
@@ -498,12 +487,6 @@ const CreateEvent = () => {
                       >
                         Event Type
                       </label>
-                      <button
-                        type="button"
-                        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
-                      >
-                        Networking <svg className="lucide ..."></svg>
-                      </button>
                       <select
                         className="w-full rounded-md border px-3 py-2"
                         name="type"
@@ -521,23 +504,16 @@ const CreateEvent = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium leading-none"
-                        htmlFor=":rcb:-form-item"
-                      >
-                        Capacity (optional)
-                      </label>
-                      <input
-                        type="number"
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                        placeholder="Maximum number of attendees"
+                      <Input
+                        value={formData.capacity.toString()}
+                        handleChange={handleInputChange}
+                        label="Capacity"
                         name="capacity"
-                        id=":rcb:-form-item"
-                        value="50"
+                        type="number"
+                        placeholder="Maximum number of attendees"
+                        description="Leave empty for unlimited capacity"
+                        error={errorFields.capacity.toString()}
                       />
-                      <p className="text-sm text-muted-foreground">
-                        Leave empty for unlimited capacity
-                      </p>
                     </div>
 
                     <div className="flex flex-row items-start space-x-3 border p-4 rounded-md">
@@ -592,46 +568,34 @@ const CreateEvent = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium leading-none"
-                        htmlFor=":rce:-form-item"
-                      >
-                        Location
-                      </label>
-                      <input
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                        placeholder="Event venue or address"
-                        name="location_link"
+                      <Input
                         value={formData.location_link}
-                        onChange={handleInputChange}
+                        handleChange={handleInputChange}
+                        label="Location"
+                        name="location_link"
+                        type="text"
+                        placeholder="Event venue or address"
+                        error={errorFields.location_link}
                       />
                     </div>
                     <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium leading-none"
-                        htmlFor=":rce:-form-item"
-                      >
-                        Website
-                      </label>
-                      <input
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                        placeholder="https://example.com"
+                      <Input
+                        value={formData.website}
+                        handleChange={handleInputChange}
+                        label="Website"
                         name="website"
-                        id=":rce:-form-item"
+                        type="text"
+                        placeholder="https://example.com"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium leading-none"
-                        htmlFor=":rce:-form-item"
-                      >
-                        Judges' Emails (Optional)
-                      </label>
-                      <input
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
-                        placeholder="Enter email addresses separated by commas"
+                      <Input
+                        value={formData.judges_emails}
+                        handleChange={handleInputChange}
+                        label="Judges' Emails"
                         name="judges_emails"
-                        value=""
+                        type="text"
+                        placeholder="Enter email addresses separated by commas"
                       />
                     </div>
 
