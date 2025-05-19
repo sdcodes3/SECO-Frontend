@@ -519,7 +519,6 @@ const EditEvent = () => {
   const handlePreviewInputChange = (
     fieldId: string,
     value: any,
-    type: string,
     required: boolean
   ) => {
     setPreviewFormData((prev) => ({
@@ -564,7 +563,6 @@ const EditEvent = () => {
                   handlePreviewInputChange(
                     field.id,
                     e.target.value,
-                    field.type,
                     field.required
                   )
                 }
@@ -582,7 +580,6 @@ const EditEvent = () => {
                   handlePreviewInputChange(
                     field.id,
                     e.target.value,
-                    field.type,
                     field.required
                   )
                 }
@@ -602,7 +599,6 @@ const EditEvent = () => {
                         handlePreviewInputChange(
                           field.id,
                           e.target.value,
-                          field.type,
                           field.required
                         )
                       }
@@ -630,7 +626,6 @@ const EditEvent = () => {
                         handlePreviewInputChange(
                           field.id,
                           newValues,
-                          field.type,
                           field.required
                         );
                       }}
@@ -653,7 +648,6 @@ const EditEvent = () => {
                   handlePreviewInputChange(
                     field.id,
                     e.target.value,
-                    field.type,
                     field.required
                   )
                 }
@@ -671,7 +665,6 @@ const EditEvent = () => {
                   handlePreviewInputChange(
                     field.id,
                     e.target.value,
-                    field.type,
                     field.required
                   )
                 }
@@ -688,7 +681,6 @@ const EditEvent = () => {
                   handlePreviewInputChange(
                     field.id,
                     e.target.files?.[0],
-                    field.type,
                     field.required
                   )
                 }
@@ -702,12 +694,7 @@ const EditEvent = () => {
                     key={rating}
                     type="button"
                     onClick={() =>
-                      handlePreviewInputChange(
-                        field.id,
-                        rating,
-                        field.type,
-                        field.required
-                      )
+                      handlePreviewInputChange(field.id, rating, field.required)
                     }
                     className={`text-2xl ${
                       previewFormData[field.id] >= rating
