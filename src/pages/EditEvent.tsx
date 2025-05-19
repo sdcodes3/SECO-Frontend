@@ -303,6 +303,7 @@ const EditEvent = () => {
         formDataToSend.append("end_date", formattedData.end_date);
         formDataToSend.append("created_by", formattedData.created_by);
         formDataToSend.append("type", formattedData.type);
+        formDataToSend.append("stages", formattedData.stages);
         // Append banner file if exists
         const bannerInput = document.getElementById(
           "event-banner-input"
