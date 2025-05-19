@@ -160,10 +160,35 @@ const CreateEvent = () => {
           )
         };
 
-        const response = await axiosInstance.post(API_CONSTANTS.ADD_EVENT, {
-          ...formattedData,
-          created_by: formData.created_by
-        });
+        // // Create FormData instance
+        const formDataToSend = new FormData();
+
+        // Append all event data as JSON string
+        // formDataToSend.append(...formattedData);
+        formDataToSend.append("title", formattedData.title);
+        formDataToSend.append("description", formattedData.description);
+        formDataToSend.append("location_link", formattedData.location_link);
+        formDataToSend.append("start_date", formattedData.start_date);
+        formDataToSend.append("end_date", formattedData.end_date);
+        formDataToSend.append("created_by", formattedData.created_by);
+        formDataToSend.append("type", formattedData.type);
+        // Append banner file if exists
+        const bannerInput = document.getElementById(
+          "event-banner-input"
+        ) as HTMLInputElement;
+        if (bannerInput?.files?.[0]) {
+          formDataToSend.append("banner", bannerInput.files[0]);
+        }
+
+        const response = await axiosInstance.post(
+          API_CONSTANTS.ADD_EVENT,
+          formDataToSend,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data"
+            }
+          }
+        );
 
         // Make sure we're setting the event ID correctly
         if (response.data.event && response.data.event.id) {

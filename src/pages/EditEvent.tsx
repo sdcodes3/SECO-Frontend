@@ -259,7 +259,7 @@ const EditEvent = () => {
           return;
         }
 
-        const user = JSON.parse(userData);
+        // const user = JSON.parse(userData);
 
         // Validate required fields
         if (
@@ -292,10 +292,34 @@ const EditEvent = () => {
             }))
           )
         };
-        const response = await axiosInstance.put(API_CONSTANTS.EDIT_EVENT(id), {
-          ...formattedData,
-          created_by: user.id // Ensure we maintain the creator ID
-        });
+        const formDataToSend = new FormData();
+
+        // Append all event data as JSON string
+        // formDataToSend.append(...formattedData);
+        formDataToSend.append("title", formattedData.title);
+        formDataToSend.append("description", formattedData.description);
+        formDataToSend.append("location_link", formattedData.location_link);
+        formDataToSend.append("start_date", formattedData.start_date);
+        formDataToSend.append("end_date", formattedData.end_date);
+        formDataToSend.append("created_by", formattedData.created_by);
+        formDataToSend.append("type", formattedData.type);
+        // Append banner file if exists
+        const bannerInput = document.getElementById(
+          "event-banner-input"
+        ) as HTMLInputElement;
+        if (bannerInput?.files?.[0]) {
+          formDataToSend.append("banner", bannerInput.files[0]);
+        }
+
+        const response = await axiosInstance.put(
+          API_CONSTANTS.EDIT_EVENT(id),
+          formDataToSend,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data"
+            }
+          }
+        );
         if (response.status === 200) {
           setSuccess("Event updated successfully!");
         }

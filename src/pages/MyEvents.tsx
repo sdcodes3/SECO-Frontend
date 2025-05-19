@@ -13,6 +13,7 @@ interface Event {
   attendees: number;
   date: string;
   created_by: string;
+  banner?: string;
 }
 
 const MyEvents = () => {
@@ -48,7 +49,8 @@ const MyEvents = () => {
           location_link: event.location_link || "",
           attendees: event.attendees || 0,
           date: event.date || "",
-          created_by: event.created_by || ""
+          created_by: event.created_by || "",
+          banner: event.banner || ""
         }));
 
         setEvents(formattedEvents);
@@ -194,6 +196,16 @@ const MyEvents = () => {
                   key={event.id}
                   className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden hover-lift transition-all duration-300 h-full flex flex-col"
                 >
+                  <div className="w-full h-48 overflow-hidden">
+                    <img
+                      src={
+                        event.banner ||
+                        "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                      }
+                      alt={event.title}
+                      className="w-full h-full object-cover bg-gray-100"
+                    />
+                  </div>
                   <div className="flex flex-col space-y-1.5 p-6 pb-2">
                     <div className="flex justify-between items-start mb-2">
                       <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">

@@ -4,20 +4,14 @@ import { useEffect, useState } from "react";
 import axiosInstance from "../utils/axios";
 import API_CONSTANTS from "../utils/apiConstants";
 
-// interface Event {
-//   id: string;
-//   type: string;
-//   title: string;
-//   description: string;
-//   start_date: string;
-//   location_link: string;
-//   created_at: string;
-// }
-
 const EventDashboard = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toISOString().split("T")[0];
+  };
 
   useEffect(() => {
     // Check if user is logged in
@@ -176,6 +170,16 @@ const EventDashboard = () => {
               key={event.id}
               className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden hover-lift transition-all duration-300 h-full flex flex-col"
             >
+              <div className="w-full h-48 overflow-hidden">
+                <img
+                  src={
+                    event.banner ||
+                    "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                  }
+                  alt={event.title}
+                  className="w-full h-full object-cover bg-gray-100"
+                />
+              </div>
               <div className="flex flex-col space-y-1.5 p-6 pb-2">
                 <div className="flex justify-between items-start mb-2">
                   <span
@@ -190,7 +194,7 @@ const EventDashboard = () => {
                     {event.type}
                   </span>
                   <span className="text-xs text-gray-500">
-                    {event.created_at}
+                    {formatDate(event.created_at)}
                   </span>
                 </div>
                 <h3 className="font-semibold tracking-tight text-xl line-clamp-1">

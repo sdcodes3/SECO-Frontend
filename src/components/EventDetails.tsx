@@ -18,6 +18,7 @@ interface Event {
   created_at: string;
   updated_at: string;
   stages: string; //this will be json string
+  banner?: string;
 }
 
 const EventDetails = () => {
@@ -89,6 +90,16 @@ const EventDetails = () => {
       <div>
         {!isLoggedIn && <Header />}
         <div className="container mx-auto py-8 px-4">
+          <div className="w-full h-64 mb-8 rounded-lg overflow-hidden">
+            <img
+              src={
+                event.banner ||
+                "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+              }
+              alt={event.title}
+              className="w-full h-full object-cover bg-gray-100"
+            />
+          </div>
           <button
             className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 mb-6"
             onClick={handleBackToEvents}
