@@ -86,6 +86,13 @@ const CreateEvent = () => {
     required: false,
     options: [""]
   });
+  const [previewFormData, setPreviewFormData] = useState<Record<string, any>>(
+    {}
+  );
+  const [previewErrors, setPreviewErrors] = useState<Record<string, string>>(
+    {}
+  );
+  const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
 
   useEffect(() => {
     // Get user data from localStorage
@@ -147,6 +154,7 @@ const CreateEvent = () => {
           ...formData,
           start_date: formData.start_date,
           end_date: formData.end_date,
+          is_virtual: formData.is_virtual || false,
           stages: JSON.stringify(
             stages.map((stage) => ({
               name: stage.name,
@@ -160,11 +168,10 @@ const CreateEvent = () => {
           )
         };
 
-        // // Create FormData instance
+        // Create FormData instance
         const formDataToSend = new FormData();
 
-        // Append all event data as JSON string
-        // formDataToSend.append(...formattedData);
+        // Append all event data
         formDataToSend.append("title", formattedData.title);
         formDataToSend.append("description", formattedData.description);
         formDataToSend.append("location_link", formattedData.location_link);
@@ -172,6 +179,15 @@ const CreateEvent = () => {
         formDataToSend.append("end_date", formattedData.end_date);
         formDataToSend.append("created_by", formattedData.created_by);
         formDataToSend.append("type", formattedData.type);
+        formDataToSend.append("capacity", formattedData.capacity.toString());
+        formDataToSend.append("website", formattedData.website);
+        formDataToSend.append("judges_emails", formattedData.judges_emails);
+        formDataToSend.append(
+          "is_virtual",
+          formattedData.is_virtual.toString()
+        );
+        formDataToSend.append("stages", formattedData.stages);
+
         // Append banner file if exists
         const bannerInput = document.getElementById(
           "event-banner-input"
@@ -311,6 +327,464 @@ const CreateEvent = () => {
       const newStages = stages.filter((_, i) => i !== index);
       setStages(newStages);
     }
+  };
+
+  const handlePreviewInputChange = (
+    fieldId: string,
+    value: any,
+    type: string,
+    required: boolean
+  ) => {
+    setPreviewFormData((prev) => ({
+      ...prev,
+      [fieldId]: value
+    }));
+
+    // Validate the field
+    if (required && !value) {
+      setPreviewErrors((prev) => ({
+        ...prev,
+        [fieldId]: "This field is required"
+      }));
+    } else {
+      setPreviewErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[fieldId];
+        return newErrors;
+      });
+    }
+  };
+
+  const renderPreviewForm = () => {
+    return (
+      <div className="space-y-6">
+        {fields.map((field) => (
+          <div key={field.id} className="space-y-2">
+            <label className="text-sm font-medium leading-none">
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </label>
+
+            {field.type === "text" && (
+              <input
+                type="text"
+                className={`w-full rounded-md border ${
+                  previewErrors[field.id] ? "border-red-500" : "border-input"
+                } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                placeholder={field.placeholder || "Enter your answer"}
+                value={previewFormData[field.id] || ""}
+                onChange={(e) =>
+                  handlePreviewInputChange(
+                    field.id,
+                    e.target.value,
+                    field.type,
+                    field.required
+                  )
+                }
+              />
+            )}
+
+            {field.type === "textarea" && (
+              <textarea
+                className={`w-full rounded-md border ${
+                  previewErrors[field.id] ? "border-red-500" : "border-input"
+                } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-h-[100px]`}
+                placeholder={field.placeholder || "Enter your answer"}
+                value={previewFormData[field.id] || ""}
+                onChange={(e) =>
+                  handlePreviewInputChange(
+                    field.id,
+                    e.target.value,
+                    field.type,
+                    field.required
+                  )
+                }
+              />
+            )}
+
+            {field.type === "radio" && (
+              <div className="space-y-2">
+                {field.options?.map((option: string, index: number) => (
+                  <label key={index} className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      name={field.id}
+                      value={option}
+                      checked={previewFormData[field.id] === option}
+                      onChange={(e) =>
+                        handlePreviewInputChange(
+                          field.id,
+                          e.target.value,
+                          field.type,
+                          field.required
+                        )
+                      }
+                      className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm">{option}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {field.type === "checkbox" && (
+              <div className="space-y-2">
+                {field.options?.map((option: string, index: number) => (
+                  <label key={index} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      value={option}
+                      checked={previewFormData[field.id]?.includes(option)}
+                      onChange={(e) => {
+                        const currentValues = previewFormData[field.id] || [];
+                        const newValues = e.target.checked
+                          ? [...currentValues, option]
+                          : currentValues.filter((v: string) => v !== option);
+                        handlePreviewInputChange(
+                          field.id,
+                          newValues,
+                          field.type,
+                          field.required
+                        );
+                      }}
+                      className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm">{option}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {field.type === "date" && (
+              <input
+                type="date"
+                className={`w-full rounded-md border ${
+                  previewErrors[field.id] ? "border-red-500" : "border-input"
+                } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                value={previewFormData[field.id] || ""}
+                onChange={(e) =>
+                  handlePreviewInputChange(
+                    field.id,
+                    e.target.value,
+                    field.type,
+                    field.required
+                  )
+                }
+              />
+            )}
+
+            {field.type === "time" && (
+              <input
+                type="time"
+                className={`w-full rounded-md border ${
+                  previewErrors[field.id] ? "border-red-500" : "border-input"
+                } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                value={previewFormData[field.id] || ""}
+                onChange={(e) =>
+                  handlePreviewInputChange(
+                    field.id,
+                    e.target.value,
+                    field.type,
+                    field.required
+                  )
+                }
+              />
+            )}
+
+            {field.type === "file" && (
+              <input
+                type="file"
+                className={`w-full rounded-md border ${
+                  previewErrors[field.id] ? "border-red-500" : "border-input"
+                } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                onChange={(e) =>
+                  handlePreviewInputChange(
+                    field.id,
+                    e.target.files?.[0],
+                    field.type,
+                    field.required
+                  )
+                }
+              />
+            )}
+
+            {field.type === "rating" && (
+              <div className="flex space-x-2">
+                {[1, 2, 3, 4, 5].map((rating) => (
+                  <button
+                    key={rating}
+                    type="button"
+                    onClick={() =>
+                      handlePreviewInputChange(
+                        field.id,
+                        rating,
+                        field.type,
+                        field.required
+                      )
+                    }
+                    className={`text-2xl ${
+                      previewFormData[field.id] >= rating
+                        ? "text-yellow-400"
+                        : "text-gray-300"
+                    }`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {previewErrors[field.id] && (
+              <p className="text-sm text-red-500">{previewErrors[field.id]}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "numeric",
+      hour12: true
+    });
+  };
+
+  const renderEventPreview = () => {
+    return (
+      <div className="p-6">
+        <div className="max-w-3xl mx-auto">
+          <div className="w-full h-64 mb-8 rounded-lg overflow-hidden">
+            <img
+              src={
+                bannerPreview ||
+                "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+              }
+              alt={formData.title}
+              className="w-full h-full object-cover bg-gray-100"
+            />
+          </div>
+          <div className="bg-muted/30 rounded-lg p-6 mb-8">
+            <div className="flex flex-col lg:flex-row justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                    {formData.type}
+                  </span>
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    {formData.is_virtual ? "Virtual" : "In-Person"}
+                  </span>
+                </div>
+                <h1 className="text-3xl font-bold mb-2">{formData.title}</h1>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="lucide lucide-calendar h-4 w-4 mr-2 text-primary"
+                    >
+                      <path d="M8 2v4"></path>
+                      <path d="M16 2v4"></path>
+                      <rect width="18" height="18" x="3" y="4" rx="2"></rect>
+                      <path d="M3 10h18"></path>
+                    </svg>
+                    <span>{formatDate(formData.start_date)}</span>
+                  </div>
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="lucide lucide-clock h-4 w-4 mr-2 text-primary"
+                    >
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span>
+                      {formatTime(formData.start_date)} -{" "}
+                      {formatTime(formData.end_date)}
+                    </span>
+                  </div>
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="lucide lucide-map-pin h-4 w-4 mr-2 text-primary"
+                    >
+                      <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    <span>{formData.location_link}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              {stages.length > 0 && (
+                <div className="mb-8">
+                  <div className="flex flex-col gap-6">
+                    {stages.map((stage, idx) => {
+                      const dateObj = new Date(stage.start_date);
+                      const day = dateObj.getDate();
+                      const month = dateObj.toLocaleString("en-US", {
+                        month: "short"
+                      });
+
+                      return (
+                        <div key={idx} className="flex items-start gap-4">
+                          <div className="flex flex-col items-center min-w-[56px]">
+                            <div className="bg-blue-100 text-blue-700 rounded-lg px-2 py-1 text-center font-semibold text-sm mb-1">
+                              {day}
+                              <div className="text-xs text-gray-500 font-normal">
+                                {month} {String(dateObj.getFullYear()).slice(2)}
+                              </div>
+                            </div>
+                            {idx < stages.length - 1 && (
+                              <div
+                                className="w-px bg-blue-300 flex-1 mx-auto"
+                                style={{ minHeight: 32 }}
+                              />
+                            )}
+                          </div>
+                          <div className="flex-1 bg-white rounded-lg shadow border p-4">
+                            <div className="font-bold text-lg mb-1">
+                              {stage.name}
+                            </div>
+                            <div className="text-gray-600 mb-2 whitespace-pre-line">
+                              {stage.description}
+                            </div>
+                            <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                              <div>
+                                <span className="font-medium">Start:</span>{" "}
+                                {stage.start_date}{" "}
+                                {stage.start_time && <>| {stage.start_time}</>}
+                              </div>
+                              <div>
+                                <span className="font-medium">End:</span>{" "}
+                                {stage.end_date}{" "}
+                                {stage.end_time && <>| {stage.end_time}</>}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+                <div className="p-6 pt-6">
+                  <h2 className="text-xl font-semibold mb-4">
+                    About This Event
+                  </h2>
+                  <div className="prose max-w-none">
+                    <p className="mb-4 text-muted-foreground">
+                      {formData.description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+                <div className="p-6 pt-6">
+                  <h2 className="text-xl font-semibold mb-4">Event Details</h2>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-medium">Date and Time</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {formatDate(formData.start_date)}
+                        <br />
+                        {formatTime(formData.start_date)} -{" "}
+                        {formatTime(formData.end_date)}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium">Location</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {formData.location_link}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium">Event Type</h3>
+                      <p className="text-sm text-muted-foreground capitalize">
+                        {formData.type}
+                      </p>
+                    </div>
+                    {formData.capacity && (
+                      <div>
+                        <h3 className="text-sm font-medium">Capacity</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {formData.capacity} attendees
+                        </p>
+                      </div>
+                    )}
+                    {formData.website && (
+                      <div>
+                        <h3 className="text-sm font-medium">Website</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {formData.website}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end space-x-4 mt-6">
+            <button
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+              type="button"
+              onClick={() => setStep(2)}
+            >
+              Back to Form Builder
+            </button>
+            <button
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+              type="button"
+              onClick={() => navigate("/my-events")}
+            >
+              Publish Event
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -843,7 +1317,7 @@ const CreateEvent = () => {
               </div>
             </div>
           </div>
-        ) : (
+        ) : step === 2 ? (
           <div className="p-6">
             <div className="max-w-3xl mx-auto">
               {error && (
@@ -950,41 +1424,53 @@ const CreateEvent = () => {
                           <button
                             type="button"
                             role="tab"
-                            aria-selected="true"
+                            aria-selected={activeTab === "edit"}
                             aria-controls="radix-:r1b:-content-edit"
-                            data-state="active"
+                            data-state={
+                              activeTab === "edit" ? "active" : "inactive"
+                            }
                             id="radix-:r1b:-trigger-edit"
-                            className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                            tabIndex={-1}
-                            data-orientation="horizontal"
-                            data-radix-collection-item=""
+                            className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+                              activeTab === "edit"
+                                ? "bg-background text-foreground shadow-sm"
+                                : "text-muted-foreground"
+                            }`}
+                            onClick={() => setActiveTab("edit")}
                           >
                             Edit Form
                           </button>
                           <button
                             type="button"
                             role="tab"
-                            aria-selected="false"
+                            aria-selected={activeTab === "preview"}
                             aria-controls="radix-:r1b:-content-preview"
-                            data-state="inactive"
+                            data-state={
+                              activeTab === "preview" ? "active" : "inactive"
+                            }
                             id="radix-:r1b:-trigger-preview"
-                            className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                            tabIndex={-1}
-                            data-orientation="horizontal"
-                            data-radix-collection-item=""
+                            className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+                              activeTab === "preview"
+                                ? "bg-background text-foreground shadow-sm"
+                                : "text-muted-foreground"
+                            }`}
+                            onClick={() => setActiveTab("preview")}
                           >
                             Preview Form
                           </button>
                         </div>
                         <div
-                          data-state="active"
+                          data-state={
+                            activeTab === "edit" ? "active" : "inactive"
+                          }
                           data-orientation="horizontal"
                           role="tabpanel"
                           aria-labelledby="radix-:r1b:-trigger-edit"
                           id="radix-:r1b:-content-edit"
                           tabIndex={0}
                           className="ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 mt-0"
-                          style={{}}
+                          style={{
+                            display: activeTab === "edit" ? "block" : "none"
+                          }}
                         >
                           <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
                             <div className="p-6 pt-6">
@@ -1316,15 +1802,43 @@ const CreateEvent = () => {
                           </div>
                         </div>
                         <div
-                          data-state="inactive"
+                          data-state={
+                            activeTab === "preview" ? "active" : "inactive"
+                          }
                           data-orientation="horizontal"
                           role="tabpanel"
                           aria-labelledby="radix-:r1b:-trigger-preview"
-                          hidden={true}
                           id="radix-:r1b:-content-preview"
                           tabIndex={0}
                           className="ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 mt-0"
-                        ></div>
+                          style={{
+                            display: activeTab === "preview" ? "block" : "none"
+                          }}
+                        >
+                          <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+                            <div className="p-6 pt-6">
+                              <div className="space-y-4">
+                                <div
+                                  role="alert"
+                                  className="relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground bg-background text-foreground"
+                                >
+                                  <div className="text-sm [&_p]:leading-relaxed">
+                                    This is how your registration form will
+                                    appear to participants.
+                                  </div>
+                                </div>
+                                {fields.length === 0 ? (
+                                  <div className="text-center p-8 border border-dashed rounded-md text-muted-foreground">
+                                    No fields added yet. Add some fields in the
+                                    Edit Form tab to see the preview.
+                                  </div>
+                                ) : (
+                                  renderPreviewForm()
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1332,6 +1846,7 @@ const CreateEvent = () => {
                     <button
                       className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
                       type="button"
+                      onClick={() => setStep(3)}
                     >
                       Skip Form Builder
                     </button>
@@ -1339,7 +1854,8 @@ const CreateEvent = () => {
                       className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
                       type="button"
                       onClick={() => {
-                        navigate("/my-events");
+                        handleSaveForm();
+                        setStep(3);
                       }}
                     >
                       Finish
@@ -1349,6 +1865,8 @@ const CreateEvent = () => {
               </div>
             </div>
           </div>
+        ) : (
+          renderEventPreview()
         )}
       </div>
       {showQuestionModal && (

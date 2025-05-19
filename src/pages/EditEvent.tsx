@@ -90,6 +90,19 @@ const EditEvent = () => {
     stages: []
   });
 
+  const [judgesEmails, setJudgesEmails] = useState<string[]>([]);
+  const [newJudgeEmail, setNewJudgeEmail] = useState("");
+  const [showAddJudgeModal, setShowAddJudgeModal] = useState(false);
+  const [judgeEmailError, setJudgeEmailError] = useState("");
+
+  const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
+  const [previewFormData, setPreviewFormData] = useState<Record<string, any>>(
+    {}
+  );
+  const [previewErrors, setPreviewErrors] = useState<Record<string, string>>(
+    {}
+  );
+
   const fetchFormFields = async (eventId: string) => {
     try {
       setLoading(true);
@@ -151,6 +164,11 @@ const EditEvent = () => {
 
         const eventData = response.data.event;
 
+        // Set banner preview if banner exists
+        if (eventData.banner) {
+          setBannerPreview(eventData.banner);
+        }
+
         // Parse stages if they exist
         let parsedStages: Stage[] = [];
         if (eventData.stages) {
@@ -167,6 +185,16 @@ const EditEvent = () => {
           } catch (error) {
             console.error("Error parsing stages:", error);
           }
+        }
+
+        // Parse judges emails if they exist
+        if (eventData.judges_emails) {
+          setJudgesEmails(
+            eventData.judges_emails
+              .split(",")
+              .map((email: string) => email.trim())
+              .filter(Boolean)
+          );
         }
 
         // Format dates to YYYY-MM-DD for input fields
@@ -225,7 +253,9 @@ const EditEvent = () => {
     return {
       created_by: "",
       website: "",
-      judges_emails: "",
+      judges_emails: formData.judges_emails
+        ? validateEmails(formData.judges_emails)
+        : "",
       title: formData.title.trim() ? "" : "Title is required",
       description: formData.description.trim() ? "" : "Description is required",
       start_date: formData.start_date ? "" : "Start date is required",
@@ -237,12 +267,26 @@ const EditEvent = () => {
       capacity: ""
     };
   };
+
+  const validateEmails = (emails: string): string => {
+    if (!emails.trim()) return "";
+
+    const emailList = emails.split(",").map((email) => email.trim());
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    for (const email of emailList) {
+      if (!emailRegex.test(email)) {
+        return "Please enter valid email addresses separated by commas";
+      }
+    }
+    return "";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errorFields = validateForm();
     const isError = Object.values(errorFields).some((value) => value !== "");
-    console.log(errorFields);
-    console.log(isError);
+
     if (isError) {
       setErrorFields(errorFields);
       return;
@@ -259,27 +303,19 @@ const EditEvent = () => {
           return;
         }
 
-        // const user = JSON.parse(userData);
-
-        // Validate required fields
-        if (
-          !formData.title ||
-          !formData.description ||
-          !formData.start_date ||
-          !formData.end_date
-        ) {
-          setError("Please fill in all required fields");
-          setLoading(false);
-          return;
-        }
         if (!id) {
           setError("Event not found");
           return;
         }
+
         const formattedData = {
           ...formData,
           start_date: formData.start_date,
           end_date: formData.end_date,
+          judges_emails: formData.judges_emails
+            .split(",")
+            .map((email) => email.trim())
+            .join(","),
           stages: JSON.stringify(
             stages.map((stage) => ({
               name: stage.name,
@@ -292,10 +328,8 @@ const EditEvent = () => {
             }))
           )
         };
-        const formDataToSend = new FormData();
 
-        // Append all event data as JSON string
-        // formDataToSend.append(...formattedData);
+        const formDataToSend = new FormData();
         formDataToSend.append("title", formattedData.title);
         formDataToSend.append("description", formattedData.description);
         formDataToSend.append("location_link", formattedData.location_link);
@@ -304,6 +338,7 @@ const EditEvent = () => {
         formDataToSend.append("created_by", formattedData.created_by);
         formDataToSend.append("type", formattedData.type);
         formDataToSend.append("stages", formattedData.stages);
+        formDataToSend.append("judges_emails", formattedData.judges_emails);
         // Append banner file if exists
         const bannerInput = document.getElementById(
           "event-banner-input"
@@ -446,6 +481,253 @@ const EditEvent = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddJudge = () => {
+    if (!newJudgeEmail.trim()) {
+      setJudgeEmailError("Email is required");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newJudgeEmail.trim())) {
+      setJudgeEmailError("Please enter a valid email address");
+      return;
+    }
+
+    setJudgeEmailError("");
+    setJudgesEmails([...judgesEmails, newJudgeEmail.trim()]);
+    setFormData((prev) => ({
+      ...prev,
+      judges_emails: [...judgesEmails, newJudgeEmail.trim()].join(",")
+    }));
+    setNewJudgeEmail("");
+    setShowAddJudgeModal(false);
+  };
+
+  const handleRemoveJudge = (emailToRemove: string) => {
+    const updatedEmails = judgesEmails.filter(
+      (email) => email !== emailToRemove
+    );
+    setJudgesEmails(updatedEmails);
+    setFormData((prev) => ({
+      ...prev,
+      judges_emails: updatedEmails.join(",")
+    }));
+  };
+
+  const handlePreviewInputChange = (
+    fieldId: string,
+    value: any,
+    type: string,
+    required: boolean
+  ) => {
+    setPreviewFormData((prev) => ({
+      ...prev,
+      [fieldId]: value
+    }));
+
+    // Validate the field
+    if (required && !value) {
+      setPreviewErrors((prev) => ({
+        ...prev,
+        [fieldId]: "This field is required"
+      }));
+    } else {
+      setPreviewErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[fieldId];
+        return newErrors;
+      });
+    }
+  };
+
+  const renderPreviewForm = () => {
+    return (
+      <div className="space-y-6">
+        {fields.map((field) => (
+          <div key={field.id} className="space-y-2">
+            <label className="text-sm font-medium leading-none">
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </label>
+
+            {field.type === "text" && (
+              <input
+                type="text"
+                className={`w-full rounded-md border ${
+                  previewErrors[field.id] ? "border-red-500" : "border-input"
+                } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                placeholder={field.placeholder || "Enter your answer"}
+                value={previewFormData[field.id] || ""}
+                onChange={(e) =>
+                  handlePreviewInputChange(
+                    field.id,
+                    e.target.value,
+                    field.type,
+                    field.required
+                  )
+                }
+              />
+            )}
+
+            {field.type === "textarea" && (
+              <textarea
+                className={`w-full rounded-md border ${
+                  previewErrors[field.id] ? "border-red-500" : "border-input"
+                } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-h-[100px]`}
+                placeholder={field.placeholder || "Enter your answer"}
+                value={previewFormData[field.id] || ""}
+                onChange={(e) =>
+                  handlePreviewInputChange(
+                    field.id,
+                    e.target.value,
+                    field.type,
+                    field.required
+                  )
+                }
+              />
+            )}
+
+            {field.type === "radio" && (
+              <div className="space-y-2">
+                {field.options?.map((option: string, index: number) => (
+                  <label key={index} className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      name={field.id}
+                      value={option}
+                      checked={previewFormData[field.id] === option}
+                      onChange={(e) =>
+                        handlePreviewInputChange(
+                          field.id,
+                          e.target.value,
+                          field.type,
+                          field.required
+                        )
+                      }
+                      className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm">{option}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {field.type === "checkbox" && (
+              <div className="space-y-2">
+                {field.options?.map((option: string, index: number) => (
+                  <label key={index} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      value={option}
+                      checked={previewFormData[field.id]?.includes(option)}
+                      onChange={(e) => {
+                        const currentValues = previewFormData[field.id] || [];
+                        const newValues = e.target.checked
+                          ? [...currentValues, option]
+                          : currentValues.filter((v: string) => v !== option);
+                        handlePreviewInputChange(
+                          field.id,
+                          newValues,
+                          field.type,
+                          field.required
+                        );
+                      }}
+                      className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm">{option}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {field.type === "date" && (
+              <input
+                type="date"
+                className={`w-full rounded-md border ${
+                  previewErrors[field.id] ? "border-red-500" : "border-input"
+                } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                value={previewFormData[field.id] || ""}
+                onChange={(e) =>
+                  handlePreviewInputChange(
+                    field.id,
+                    e.target.value,
+                    field.type,
+                    field.required
+                  )
+                }
+              />
+            )}
+
+            {field.type === "time" && (
+              <input
+                type="time"
+                className={`w-full rounded-md border ${
+                  previewErrors[field.id] ? "border-red-500" : "border-input"
+                } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                value={previewFormData[field.id] || ""}
+                onChange={(e) =>
+                  handlePreviewInputChange(
+                    field.id,
+                    e.target.value,
+                    field.type,
+                    field.required
+                  )
+                }
+              />
+            )}
+
+            {field.type === "file" && (
+              <input
+                type="file"
+                className={`w-full rounded-md border ${
+                  previewErrors[field.id] ? "border-red-500" : "border-input"
+                } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                onChange={(e) =>
+                  handlePreviewInputChange(
+                    field.id,
+                    e.target.files?.[0],
+                    field.type,
+                    field.required
+                  )
+                }
+              />
+            )}
+
+            {field.type === "rating" && (
+              <div className="flex space-x-2">
+                {[1, 2, 3, 4, 5].map((rating) => (
+                  <button
+                    key={rating}
+                    type="button"
+                    onClick={() =>
+                      handlePreviewInputChange(
+                        field.id,
+                        rating,
+                        field.type,
+                        field.required
+                      )
+                    }
+                    className={`text-2xl ${
+                      previewFormData[field.id] >= rating
+                        ? "text-yellow-400"
+                        : "text-gray-300"
+                    }`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {previewErrors[field.id] && (
+              <p className="text-sm text-red-500">{previewErrors[field.id]}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   if (loading) {
@@ -755,25 +1037,6 @@ const EditEvent = () => {
                       </div>
 
                       <div className="space-y-2">
-                        {/* <label
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        htmlFor=":rc2:-form-item"
-                      >
-                        Event Description
-                      </label>
-                      <textarea
-                        className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        placeholder="Describe your event..."
-                        name="description"
-                        value={formData.description}
-                        onChange={handleInputChange}
-                      ></textarea>
-                      <p
-                        id=":rc2:-form-item-description"
-                        className="text-sm text-muted-foreground"
-                      >
-                        Provide details about your event
-                      </p> */}
                         <Input
                           value={formData.description}
                           handleChange={handleInputChange}
@@ -1134,41 +1397,53 @@ const EditEvent = () => {
                             <button
                               type="button"
                               role="tab"
-                              aria-selected="true"
+                              aria-selected={activeTab === "edit"}
                               aria-controls="radix-:r1b:-content-edit"
-                              data-state="active"
+                              data-state={
+                                activeTab === "edit" ? "active" : "inactive"
+                              }
                               id="radix-:r1b:-trigger-edit"
-                              className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                              tabIndex={-1}
-                              data-orientation="horizontal"
-                              data-radix-collection-item=""
+                              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+                                activeTab === "edit"
+                                  ? "bg-background text-foreground shadow-sm"
+                                  : "text-muted-foreground"
+                              }`}
+                              onClick={() => setActiveTab("edit")}
                             >
                               Edit Form
                             </button>
                             <button
                               type="button"
                               role="tab"
-                              aria-selected="false"
+                              aria-selected={activeTab === "preview"}
                               aria-controls="radix-:r1b:-content-preview"
-                              data-state="inactive"
+                              data-state={
+                                activeTab === "preview" ? "active" : "inactive"
+                              }
                               id="radix-:r1b:-trigger-preview"
-                              className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                              tabIndex={-1}
-                              data-orientation="horizontal"
-                              data-radix-collection-item=""
+                              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+                                activeTab === "preview"
+                                  ? "bg-background text-foreground shadow-sm"
+                                  : "text-muted-foreground"
+                              }`}
+                              onClick={() => setActiveTab("preview")}
                             >
                               Preview Form
                             </button>
                           </div>
                           <div
-                            data-state="active"
+                            data-state={
+                              activeTab === "edit" ? "active" : "inactive"
+                            }
                             data-orientation="horizontal"
                             role="tabpanel"
                             aria-labelledby="radix-:r1b:-trigger-edit"
                             id="radix-:r1b:-content-edit"
                             tabIndex={0}
                             className="ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 mt-0"
-                            style={{}}
+                            style={{
+                              display: activeTab === "edit" ? "block" : "none"
+                            }}
                           >
                             <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
                               <div className="p-6 pt-6">
@@ -1453,15 +1728,44 @@ const EditEvent = () => {
                             </div>
                           </div>
                           <div
-                            data-state="inactive"
+                            data-state={
+                              activeTab === "preview" ? "active" : "inactive"
+                            }
                             data-orientation="horizontal"
                             role="tabpanel"
                             aria-labelledby="radix-:r1b:-trigger-preview"
-                            hidden={true}
                             id="radix-:r1b:-content-preview"
                             tabIndex={0}
                             className="ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 mt-0"
-                          ></div>
+                            style={{
+                              display:
+                                activeTab === "preview" ? "block" : "none"
+                            }}
+                          >
+                            <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+                              <div className="p-6 pt-6">
+                                <div className="space-y-4">
+                                  <div
+                                    role="alert"
+                                    className="relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground bg-background text-foreground"
+                                  >
+                                    <div className="text-sm [&_p]:leading-relaxed">
+                                      This is how your registration form will
+                                      appear to participants.
+                                    </div>
+                                  </div>
+                                  {fields.length === 0 ? (
+                                    <div className="text-center p-8 border border-dashed rounded-md text-muted-foreground">
+                                      No fields added yet. Add some fields in
+                                      the Edit Form tab to see the preview.
+                                    </div>
+                                  ) : (
+                                    renderPreviewForm()
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1469,14 +1773,21 @@ const EditEvent = () => {
                       <button
                         className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
                         type="button"
+                        onClick={() => navigate("/my-events")}
                       >
-                        Skip Form Builder
+                        Back to Events
                       </button>
                       <button
                         className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
                         type="button"
+                        onClick={() => {
+                          handleSaveForm();
+                          handleSubmit({
+                            preventDefault: () => {}
+                          } as React.FormEvent);
+                        }}
                       >
-                        Finish
+                        Save Changes
                       </button>
                     </div>
                   </div>
@@ -1501,27 +1812,74 @@ const EditEvent = () => {
                             </p>
                           </div>
                           <button
-                            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
                             type="button"
-                            aria-haspopup="dialog"
-                            aria-expanded="false"
-                            aria-controls="radix-:rql:"
-                            data-state="closed"
+                            onClick={() => setShowAddJudgeModal(true)}
                           >
                             Add Judge/Mentor
                           </button>
                         </div>
-                        <div className="py-6 text-center text-muted-foreground">
-                          No judges or mentors added yet
-                        </div>
+
+                        {judgesEmails.length === 0 ? (
+                          <div className="py-6 text-center text-muted-foreground">
+                            No judges or mentors added yet
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {judgesEmails.map((email, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                              >
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <span className="text-primary font-medium">
+                                      {email.charAt(0).toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <span className="text-sm">{email}</span>
+                                </div>
+                                <button
+                                  onClick={() => handleRemoveJudge(email)}
+                                  className="text-red-500 hover:text-red-700"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="h-5 w-5"
+                                  >
+                                    <path d="M3 6h18" />
+                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex justify-end space-x-4">
                       <button
-                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
                         type="button"
+                        onClick={() => navigate("/my-events")}
                       >
                         Back to Events
+                      </button>
+                      <button
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                        type="button"
+                        onClick={handleSubmit}
+                      >
+                        Save Changes
                       </button>
                     </div>
                   </div>
@@ -1704,6 +2062,71 @@ const EditEvent = () => {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+      {/* Add Judge Modal */}
+      {showAddJudgeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+            <button
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              onClick={() => {
+                setShowAddJudgeModal(false);
+                setJudgeEmailError("");
+              }}
+            >
+              <svg
+                width="24"
+                height="24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+            <h2 className="text-xl font-bold mb-4">Add Judge/Mentor</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={newJudgeEmail}
+                  onChange={(e) => {
+                    setNewJudgeEmail(e.target.value);
+                    setJudgeEmailError("");
+                  }}
+                  placeholder="Enter email address"
+                  className={`w-full rounded-md border ${
+                    judgeEmailError ? "border-red-500" : "border-input"
+                  } bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`}
+                />
+                {judgeEmailError && (
+                  <p className="text-sm text-red-500 mt-1">{judgeEmailError}</p>
+                )}
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  className="px-4 py-2 rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                  onClick={() => {
+                    setShowAddJudgeModal(false);
+                    setJudgeEmailError("");
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90"
+                  onClick={handleAddJudge}
+                >
+                  Add Judge
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
