@@ -13,6 +13,7 @@ import Discover from "@/pages/Discover";
 import Vault from "@/pages/Vault";
 import Layout from "@/Layout";
 import useUser from "@/hooks/useUser";
+import Professionals from "./pages/Professionals";
 const App = () => {
   const { isLoggedIn } = useUser();
   return (
@@ -97,6 +98,14 @@ const App = () => {
           element={
             <Layout>
               <Vault />
+            </Layout>
+          }
+        />
+        <Route
+          path="/professionals"
+          element={
+            <Layout>
+              <Professionals />
             </Layout>
           }
         />
