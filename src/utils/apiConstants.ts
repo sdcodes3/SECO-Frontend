@@ -7,6 +7,7 @@ class APIConstants {
   EVENTS = this.BASE_URL + "/events";
   FORM = this.BASE_URL + "/form";
   PROJECTS = this.BASE_URL + "/projects";
+  TEAM = this.BASE_URL + "/team";
 
   // Auth Endpoints
   LOGIN = this.AUTH + "/login";
@@ -36,6 +37,11 @@ class APIConstants {
   ADD_MANY_FORM = this.FORM + "/add/many";
   DELETE_FORM_BY_EVENT = (id: string) => `${this.FORM}/${id}`;
   REPLACE_FORM_BY_EVENT = (id: string) => `${this.FORM}/replace/${id}`;
+
+  //Team Endpoints
+  CREATE_TEAM = this.TEAM + "/create";
+  GET_TEAMS = this.TEAM + "/";
+  INVITE_TEAM = (teamId: string) => `${this.TEAM}/${teamId}/invite`;
 }
 
 const API_CONSTANTS = new APIConstants();

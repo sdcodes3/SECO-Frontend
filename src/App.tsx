@@ -13,6 +13,8 @@ import Discover from "@/pages/Discover";
 import Vault from "@/pages/Vault";
 import Layout from "@/Layout";
 import useUser from "@/hooks/useUser";
+import Applications from "./pages/Applications";
+import ApplyInEvent from "./pages/ApplyInEvent";
 const App = () => {
   const { isLoggedIn } = useUser();
   return (
@@ -49,6 +51,14 @@ const App = () => {
           element={
             <Layout>
               <Dashboard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/dashboard/applications/apply/:id"
+          element={
+            <Layout>
+              <ApplyInEvent />
             </Layout>
           }
         />
@@ -97,6 +107,14 @@ const App = () => {
           element={
             <Layout>
               <Vault />
+            </Layout>
+          }
+        />
+        <Route
+          path="/applications"
+          element={
+            <Layout>
+              <Applications />
             </Layout>
           }
         />
