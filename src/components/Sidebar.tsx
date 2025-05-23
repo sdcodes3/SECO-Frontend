@@ -29,7 +29,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
           <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path>
           <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
         </svg>
-      )
+      ),
     },
     {
       path: "/dashboard",
@@ -52,7 +52,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
           <rect width="7" height="9" x="14" y="12" rx="1"></rect>
           <rect width="7" height="5" x="3" y="16" rx="1"></rect>
         </svg>
-      )
+      ),
     },
     {
       path: "/events",
@@ -75,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
           <rect width="18" height="18" x="3" y="4" rx="2"></rect>
           <path d="M3 10h18"></path>
         </svg>
-      )
+      ),
     },
     {
       path: "/my-events",
@@ -96,7 +96,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
           <rect width="8" height="4" x="8" y="2" rx="1" ry="1"></rect>
           <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
         </svg>
-      )
+      ),
     },
     {
       path: "/create-event",
@@ -118,7 +118,28 @@ const Sidebar: React.FC<SidebarProps> = () => {
           <path d="M8 12h8"></path>
           <path d="M12 8v8"></path>
         </svg>
-      )
+      ),
+    },
+    {
+      path: "/investors",
+      label: "Investors",
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="lucide lucide-briefcase h-4 w-4"
+        >
+          <rect width="20" height="14" x="2" y="7" rx="2" ry="2"></rect>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+        </svg>
+      ),
     },
     {
       path: "/profile",
@@ -131,15 +152,15 @@ const Sidebar: React.FC<SidebarProps> = () => {
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           className="lucide lucide-user h-4 w-4"
         >
           <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
-      )
+      ),
     },
     {
       path: "/vault",
@@ -152,16 +173,16 @@ const Sidebar: React.FC<SidebarProps> = () => {
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           className="lucide lucide-user h-4 w-4"
         >
           <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
-      )
-    }
+      ),
+    },
   ];
 
   // Function to check if a route is active, including dynamic routes
@@ -185,7 +206,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
       style={
         {
           "--sidebar-width": "16rem",
-          "--sidebar-width-icon": "3rem"
+          "--sidebar-width-icon": "3rem",
         } as React.CSSProperties
       }
     >

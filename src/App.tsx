@@ -11,10 +11,13 @@ import Account from "@/pages/Account";
 import EditEvent from "@/pages/EditEvent";
 import Discover from "@/pages/Discover";
 import Vault from "@/pages/Vault";
+import Investor from "@/pages/Investor"; // Import the new Investor page
 import Layout from "@/Layout";
 import useUser from "@/hooks/useUser";
+
 const App = () => {
   const { isLoggedIn } = useUser();
+
   return (
     <Router>
       <Routes>
@@ -65,6 +68,14 @@ const App = () => {
           element={
             <Layout>
               <MyEvents />
+            </Layout>
+          }
+        />
+        <Route
+          path="/investors"
+          element={
+            <Layout>
+              <Investor />
             </Layout>
           }
         />

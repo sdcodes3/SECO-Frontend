@@ -7,6 +7,7 @@ class APIConstants {
   EVENTS = this.BASE_URL + "/events";
   FORM = this.BASE_URL + "/form";
   PROJECTS = this.BASE_URL + "/projects";
+  INVESTORS = this.BASE_URL + "/investors";
 
   // Auth Endpoints
   LOGIN = this.AUTH + "/login";
@@ -36,6 +37,13 @@ class APIConstants {
   ADD_MANY_FORM = this.FORM + "/add/many";
   DELETE_FORM_BY_EVENT = (id: string) => `${this.FORM}/${id}`;
   REPLACE_FORM_BY_EVENT = (id: string) => `${this.FORM}/replace/${id}`;
+
+  // Investor Endpoints
+  GET_ALL_INVESTORS = this.INVESTORS + "/";
+  GET_INVESTOR_BY_ID = (id: string) => `${this.INVESTORS}/${id}`;
+  CREATE_INVESTOR = this.INVESTORS + "/";
+  EDIT_INVESTOR = (id: string) => `${this.INVESTORS}/${id}`;
+  DELETE_INVESTOR = (id: string) => `${this.INVESTORS}/${id}`;
 }
 
 const API_CONSTANTS = new APIConstants();
