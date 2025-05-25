@@ -7,6 +7,21 @@ import API_CONSTANTS from "../utils/apiConstants";
 const EventDashboard = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedType, setSelectedType] = useState("All Types");
+  const [selectedLocation, setSelectedLocation] = useState("All Locations");
+  const [filteredEvents, setFilteredEvents] = useState<any[]>([]);
+  const [uniqueLocations, setUniqueLocations] = useState<string[]>([]);
+  const [eventTypes] = useState([
+    "All Types",
+    "networking",
+    "pitch",
+    "workshop",
+    "hackathon",
+    "meetup",
+    "conference",
+    "other",
+  ]);
   const navigate = useNavigate();
 
   const formatDate = (dateString: string) => {
@@ -21,17 +36,67 @@ const EventDashboard = () => {
     const fetchEvents = async () => {
       try {
         const response = await axiosInstance.get(API_CONSTANTS.GET_ALL_EVENTS);
-        setEvents(response.data.events);
+        const fetchedEvents = response.data.events;
+        setEvents(fetchedEvents);
+        setFilteredEvents(fetchedEvents);
+
+        // Extract unique locations
+        const locations = [
+          "All Locations",
+          ...Array.from(new Set(fetchedEvents.map((event: any) => event.location_link))) as string[],
+        ];
+        setUniqueLocations(locations);
       } catch (error) {
         console.error("Failed to fetch events:", error);
       }
     };
     fetchEvents();
-    const user = localStorage.getItem("user");
-    if (user) {
-      setIsLoggedIn(true);
-    }
   }, []);
+
+  // Search and filter function
+  useEffect(() => {
+    let filtered = [...events];
+
+    // Apply search query filter
+    if (searchQuery) {
+      filtered = filtered.filter(
+        (event) =>
+          event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          event.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply type filter
+    if (selectedType !== "All Types") {
+      filtered = filtered.filter(
+        (event) => event.type === selectedType.toLowerCase()
+      );
+    }
+
+    // Apply location filter
+    if (selectedLocation !== "All Locations") {
+      filtered = filtered.filter(
+        (event) => event.location_link === selectedLocation
+      );
+    }
+
+    setFilteredEvents(filtered);
+  }, [searchQuery, selectedType, selectedLocation, events]);
+
+  // Search input handler
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  // Type filter handler
+  const handleTypeChange = (type: string) => {
+    setSelectedType(type);
+  };
+
+  // Location filter handler
+  const handleLocationChange = (location: string) => {
+    setSelectedLocation(location);
+  };
 
   const handleViewDetails = (eventId: string) => {
     navigate(`/event/${eventId}`);
@@ -55,9 +120,9 @@ const EventDashboard = () => {
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                   className="lucide lucide-search absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
                 >
                   <circle cx="11" cy="11" r="8"></circle>
@@ -66,11 +131,12 @@ const EventDashboard = () => {
                 <input
                   className="flex h-10 w-full rounded-md border border-input px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pl-9 bg-background"
                   placeholder="Search events..."
-                  value=""
+                  value={searchQuery}
+                  onChange={handleSearch}
                 />
               </div>
               <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex items-center gap-2">
+                <div className="relative flex items-center gap-2">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="24"
@@ -78,9 +144,9 @@ const EventDashboard = () => {
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                     className="lucide lucide-calendar h-4 w-4 text-muted-foreground hidden sm:block"
                   >
                     <path d="M8 2v4"></path>
@@ -88,35 +154,19 @@ const EventDashboard = () => {
                     <rect width="18" height="18" x="3" y="4" rx="2"></rect>
                     <path d="M3 10h18"></path>
                   </svg>
-                  <button
-                    type="button"
-                    role="combobox"
-                    aria-controls="radix-:r2t:"
-                    aria-expanded="false"
-                    aria-autocomplete="none"
-                    dir="ltr"
-                    data-state="closed"
-                    className="flex h-10 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&amp;>span]:line-clamp-1 w-full sm:w-[160px]"
+                  <select
+                    value={selectedType}
+                    onChange={(e) => handleTypeChange(e.target.value)}
+                    className="flex h-10 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-full sm:w-[160px]"
                   >
-                    <span>All Types</span>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      className="lucide lucide-chevron-down h-4 w-4 opacity-50"
-                      aria-hidden="true"
-                    >
-                      <path d="m6 9 6 6 6-6"></path>
-                    </svg>
-                  </button>
+                    {eventTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="relative flex items-center gap-2">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="24"
@@ -124,48 +174,32 @@ const EventDashboard = () => {
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                     className="lucide lucide-map-pin h-4 w-4 text-muted-foreground hidden sm:block"
                   >
                     <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
                     <circle cx="12" cy="10" r="3"></circle>
                   </svg>
-                  <button
-                    type="button"
-                    role="combobox"
-                    aria-controls="radix-:r2u:"
-                    aria-expanded="false"
-                    aria-autocomplete="none"
-                    dir="ltr"
-                    data-state="closed"
-                    className="flex h-10 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&amp;>span]:line-clamp-1 w-full sm:w-[160px]"
+                  <select
+                    value={selectedLocation}
+                    onChange={(e) => handleLocationChange(e.target.value)}
+                    className="flex h-10 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-full sm:w-[160px]"
                   >
-                    <span>All Locations</span>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      className="lucide lucide-chevron-down h-4 w-4 opacity-50"
-                      aria-hidden="true"
-                    >
-                      <path d="m6 9 6 6 6-6"></path>
-                    </svg>
-                  </button>
+                    {uniqueLocations.map((location) => (
+                      <option key={location} value={location}>
+                        {location}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map((event) => (
+          {filteredEvents.map((event) => (
             <div
               key={event.id}
               className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden hover-lift transition-all duration-300 h-full flex flex-col"
@@ -214,9 +248,9 @@ const EventDashboard = () => {
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                       className="lucide lucide-calendar h-4 w-4 mr-2"
                     >
                       <path d="M8 2v4"></path>
@@ -234,9 +268,9 @@ const EventDashboard = () => {
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                       className="lucide lucide-map-pin h-4 w-4 mr-2"
                     >
                       <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
