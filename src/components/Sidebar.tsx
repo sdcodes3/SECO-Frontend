@@ -182,6 +182,63 @@ const Sidebar: React.FC<SidebarProps> = () => {
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
       )
+    },
+    {
+      path: "/subscriptions",
+      label: "Subscriptions",
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          className="lucide lucide-credit-card h-5 w-5"
+          data-lov-id="src/pages/dashboard/DashboardRoot.tsx:29:69"
+          data-lov-name="CreditCard"
+          data-component-path="src/pages/dashboard/DashboardRoot.tsx"
+          data-component-line="29"
+          data-component-file="DashboardRoot.tsx"
+          data-component-name="CreditCard"
+          data-component-content="%7B%22className%22%3A%22h-5%20w-5%22%7D"
+        >
+          <rect width="20" height="14" x="2" y="5" rx="2"></rect>
+          <line x1="2" x2="22" y1="10" y2="10"></line>
+        </svg>
+      )
+    },
+    {
+      path: "/super-admin",
+      label: "Super Admin",
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          className="lucide lucide-database h-5 w-5"
+          data-lov-id="src/pages/dashboard/DashboardRoot.tsx:34:64"
+          data-lov-name="Database"
+          data-component-path="src/pages/dashboard/DashboardRoot.tsx"
+          data-component-line="34"
+          data-component-file="DashboardRoot.tsx"
+          data-component-name="Database"
+          data-component-content="%7B%22className%22%3A%22h-5%20w-5%22%7D"
+        >
+          <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+          <path d="M3 5V19A9 3 0 0 0 21 19V5"></path>
+          <path d="M3 12A9 3 0 0 0 21 12"></path>
+        </svg>
+      )
     }
   ];
 
