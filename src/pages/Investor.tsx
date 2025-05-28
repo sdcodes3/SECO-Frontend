@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import axiosInstance from "../utils/axios";
-import API_CONSTANTS from "../utils/apiConstants";
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../../store';
+import { fetchInvestors, updateInvestor, clearMessages, createInvestor, deleteInvestor, fetchInvestorById } from '../../InvestorSlice'
 
 interface Investor {
   id: string;
@@ -35,10 +36,8 @@ interface InvestorFormData {
 }
 
 const Investor = () => {
-  const [investors, setInvestors] = useState<Investor[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const dispatch = useDispatch<AppDispatch>();
+  const { investors, loading, error, success, selectedInvestor } = useSelector((state: RootState) => state.investor);
 
   // State for Add Investor Modal
   const [showAddModal, setShowAddModal] = useState(false);
@@ -78,27 +77,21 @@ const Investor = () => {
 
   // State for View Investor Modal
   const [showViewModal, setShowViewModal] = useState(false);
-  const [viewInvestor, setViewInvestor] = useState<Investor | null>(null);
 
   // Fetch all investors on component mount
   useEffect(() => {
-    fetchInvestors();
-  }, []);
+    dispatch(fetchInvestors());
+  }, [dispatch]);
 
-  const fetchInvestors = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
-      const response = await axiosInstance.get(API_CONSTANTS.GET_ALL_INVESTORS);
-      setInvestors(response.data.investors || []);
-    } catch (err) {
-      console.error("Error fetching investors:", err);
-      setError("Failed to fetch investors. Please try again.");
-    } finally {
-      setLoading(false);
+  // Clear messages after 5 seconds
+  useEffect(() => {
+    if (error || success) {
+      const timer = setTimeout(() => {
+        dispatch(clearMessages());
+      }, 5000);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [error, success, dispatch]);
 
   // Handle Add Investor
   const handleAddInputChange = (
@@ -122,58 +115,52 @@ const Investor = () => {
 
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
+      // Parse JSON strings for sectors and expertise
+      const parsedSectors = JSON.parse(addFormData.sectors);
+      const parsedExpertise = JSON.parse(addFormData.expertise);
 
-      const formDataToSend = new FormData();
-      formDataToSend.append("name", addFormData.name);
-      formDataToSend.append("email", addFormData.email);
-      formDataToSend.append("password", addFormData.password || "");
-      formDataToSend.append("company", addFormData.company);
-      formDataToSend.append("role", addFormData.role);
-      formDataToSend.append("location", addFormData.location);
-      formDataToSend.append("availability", addFormData.availability);
-      formDataToSend.append("bio", addFormData.bio);
-      formDataToSend.append("sectors", addFormData.sectors);
-      formDataToSend.append("expertise", addFormData.expertise);
-      formDataToSend.append("specialization", addFormData.specialization);
-      formDataToSend.append("experience", addFormData.experience);
+      const investorData = {
+        name: addFormData.name,
+        email: addFormData.email,
+        password: addFormData.password || "",
+        company: addFormData.company,
+        role: addFormData.role,
+        location: addFormData.location,
+        availability: addFormData.availability,
+        bio: addFormData.bio,
+        sectors: parsedSectors,
+        expertise: parsedExpertise,
+        specialization: addFormData.specialization,
+        experience: addFormData.experience,
+        image: addFormData.image,
+      };
 
-      if (addFormData.image) {
-        formDataToSend.append("image", addFormData.image);
+      const result = await dispatch(createInvestor(investorData));
+      
+      if (createInvestor.fulfilled.match(result)) {
+        setShowAddModal(false);
+        setAddFormData({
+          name: "",
+          email: "",
+          password: "",
+          company: "",
+          role: "Investor",
+          location: "",
+          availability: "Available",
+          bio: "",
+          sectors: '["Fintech", "SaaS"]',
+          expertise: '["Seed Funding", "Series A"]',
+          specialization: "",
+          experience: "",
+          image: null,
+        });
       }
-
-      await axiosInstance.post(API_CONSTANTS.CREATE_INVESTOR, formDataToSend, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      setSuccess("Investor created successfully!");
-      setShowAddModal(false);
-      setAddFormData({
-        name: "",
-        email: "",
-        password: "",
-        company: "",
-        role: "Investor",
-        location: "",
-        availability: "Available",
-        bio: "",
-        sectors: '["Fintech", "SaaS"]',
-        expertise: '["Seed Funding", "Series A"]',
-        specialization: "",
-        experience: "",
-        image: null,
-      });
-      fetchInvestors(); // Refresh the list
-    } catch (err: any) {
-      console.error("Error creating investor:", err);
-      setError(err.response?.data?.message || "Failed to create investor. Please try again.");
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error("Error parsing JSON data:", err);
+      dispatch(clearMessages());
+      dispatch({ type: 'investor/setError', payload: 'Invalid JSON format for sectors or expertise' });
     }
   };
 
@@ -221,80 +208,55 @@ const Investor = () => {
     if (!editInvestorId) return;
 
     try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
+      // Parse JSON strings for sectors and expertise
+      const parsedSectors = JSON.parse(editFormData.sectors);
+      const parsedExpertise = JSON.parse(editFormData.expertise);
 
-      const formDataToSend = new FormData();
-      formDataToSend.append("name", editFormData.name);
-      formDataToSend.append("email", editFormData.email);
-      formDataToSend.append("company", editFormData.company);
-      formDataToSend.append("role", editFormData.role);
-      formDataToSend.append("location", editFormData.location);
-      formDataToSend.append("availability", editFormData.availability);
-      formDataToSend.append("bio", editFormData.bio);
-      formDataToSend.append("sectors", editFormData.sectors);
-      formDataToSend.append("expertise", editFormData.expertise);
-      formDataToSend.append("specialization", editFormData.specialization);
-      formDataToSend.append("experience", editFormData.experience);
+      const updatedData = {
+        name: editFormData.name,
+        email: editFormData.email,
+        company: editFormData.company,
+        role: editFormData.role,
+        location: editFormData.location,
+        availability: editFormData.availability,
+        bio: editFormData.bio,
+        sectors: parsedSectors,
+        expertise: parsedExpertise,
+        specialization: editFormData.specialization,
+        experience: editFormData.experience,
+        image: editFormData.image || undefined,
+      };
 
-      if (editFormData.image) {
-        formDataToSend.append("image", editFormData.image);
+      const result = await dispatch(updateInvestor({ id: editInvestorId, updatedData }));
+      
+      if (updateInvestor.fulfilled.match(result)) {
+        setShowEditModal(false);
+        setEditInvestorId(null);
       }
-
-      await axiosInstance.put(API_CONSTANTS.EDIT_INVESTOR(editInvestorId), formDataToSend, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      setSuccess("Investor updated successfully!");
-      setShowEditModal(false);
-      setEditInvestorId(null);
-      fetchInvestors(); // Refresh the list
-    } catch (err: any) {
-      console.error("Error updating investor:", err);
-      setError(err.response?.data?.message || "Failed to update investor. Please try again.");
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error("Error in handleEditSubmit:", err);
+      dispatch(clearMessages());
+      dispatch({ type: 'investor/setError', payload: 'Invalid JSON format for sectors or expertise' });
     }
   };
 
   // Handle View Investor
   const openViewModal = async (id: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
-      const response = await axiosInstance.get(API_CONSTANTS.GET_INVESTOR_BY_ID(id));
-      setViewInvestor(response.data.investor);
-      setShowViewModal(true);
-    } catch (err) {
-      console.error("Error fetching investor details:", err);
-      setError("Failed to fetch investor details. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    await dispatch(fetchInvestorById(id));
+    setShowViewModal(true);
   };
 
   // Handle Delete Investor
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this investor?")) return;
 
-    try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
+    await dispatch(deleteInvestor(id));
+  };
 
-      await axiosInstance.delete(API_CONSTANTS.DELETE_INVESTOR(id));
-      setSuccess("Investor deleted successfully!");
-      fetchInvestors(); // Refresh the list
-    } catch (err: any) {
-      console.error("Error deleting investor:", err);
-      setError(err.response?.data?.message || "Failed to delete investor. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+  // Close modals and clear messages
+  const closeModal = (modalSetter: React.Dispatch<React.SetStateAction<boolean>>) => {
+    modalSetter(false);
+    dispatch(clearMessages());
   };
 
   return (
@@ -524,7 +486,7 @@ const Investor = () => {
               <div className="mt-4 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => closeModal(setShowAddModal)}
                   className="px-4 py-2 text-gray-600 hover:text-gray-800"
                 >
                   Cancel
@@ -687,7 +649,7 @@ const Investor = () => {
               <div className="mt-4 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowEditModal(false)}
+                  onClick={() => closeModal(setShowEditModal)}
                   className="px-4 py-2 text-gray-600 hover:text-gray-800"
                 >
                   Cancel
@@ -706,57 +668,57 @@ const Investor = () => {
       )}
 
       {/* View Investor Modal */}
-      {showViewModal && viewInvestor && (
+      {showViewModal && selectedInvestor && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Investor Details</h2>
             <div className="space-y-4">
-              {viewInvestor.image && (
+              {selectedInvestor.image && (
                 <img
-                  src={viewInvestor.image}
-                  alt={viewInvestor.name}
+                  src={selectedInvestor.image}
+                  alt={selectedInvestor.name}
                   className="w-32 h-32 object-cover rounded"
                 />
               )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p><strong>Name:</strong> {viewInvestor.name}</p>
+                  <p><strong>Name:</strong> {selectedInvestor.name}</p>
                 </div>
                 <div>
-                  <p><strong>Email:</strong> {viewInvestor.email}</p>
+                  <p><strong>Email:</strong> {selectedInvestor.email}</p>
                 </div>
                 <div>
-                  <p><strong>Company:</strong> {viewInvestor.company}</p>
+                  <p><strong>Company:</strong> {selectedInvestor.company}</p>
                 </div>
                 <div>
-                  <p><strong>Role:</strong> {viewInvestor.role}</p>
+                  <p><strong>Role:</strong> {selectedInvestor.role}</p>
                 </div>
                 <div>
-                  <p><strong>Location:</strong> {viewInvestor.location}</p>
+                  <p><strong>Location:</strong> {selectedInvestor.location}</p>
                 </div>
                 <div>
-                  <p><strong>Availability:</strong> {viewInvestor.availability}</p>
+                  <p><strong>Availability:</strong> {selectedInvestor.availability}</p>
                 </div>
                 <div className="col-span-2">
-                  <p><strong>Bio:</strong> {viewInvestor.bio}</p>
+                  <p><strong>Bio:</strong> {selectedInvestor.bio}</p>
                 </div>
                 <div>
-                  <p><strong>Sectors:</strong> {viewInvestor.sectors.join(", ")}</p>
+                  <p><strong>Sectors:</strong> {selectedInvestor.sectors.join(", ")}</p>
                 </div>
                 <div>
-                  <p><strong>Expertise:</strong> {viewInvestor.expertise.join(", ")}</p>
+                  <p><strong>Expertise:</strong> {selectedInvestor.expertise.join(", ")}</p>
                 </div>
                 <div>
-                  <p><strong>Specialization:</strong> {viewInvestor.specialization}</p>
+                  <p><strong>Specialization:</strong> {selectedInvestor.specialization}</p>
                 </div>
                 <div>
-                  <p><strong>Experience:</strong> {viewInvestor.experience}</p>
+                  <p><strong>Experience:</strong> {selectedInvestor.experience}</p>
                 </div>
               </div>
             </div>
             <div className="mt-4 flex justify-end">
               <button
-                onClick={() => setShowViewModal(false)}
+                onClick={() => closeModal(setShowViewModal)}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800"
               >
                 Close
