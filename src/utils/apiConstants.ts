@@ -8,6 +8,7 @@ class APIConstants {
   FORM = this.BASE_URL + "/form";
   PROJECTS = this.BASE_URL + "/projects";
   INVESTORS = this.BASE_URL + "/investors";
+  TEAM = this.BASE_URL + "/team";
 
   // Auth Endpoints
   LOGIN = this.AUTH + "/login";
@@ -44,6 +45,10 @@ class APIConstants {
   CREATE_INVESTOR = this.INVESTORS + "/";
   EDIT_INVESTOR = (id: string) => `${this.INVESTORS}/${id}`;
   DELETE_INVESTOR = (id: string) => `${this.INVESTORS}/${id}`;
+  //Team Endpoints
+  CREATE_TEAM = this.TEAM + "/create";
+  GET_TEAMS = this.TEAM + "/";
+  INVITE_TEAM = (teamId: string) => `${this.TEAM}/${teamId}/invite`;
 }
 
 const API_CONSTANTS = new APIConstants();

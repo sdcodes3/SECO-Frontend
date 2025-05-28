@@ -14,7 +14,13 @@ import Vault from "@/pages/Vault";
 import Investor from "@/pages/Investor"; // Import the new Investor page
 import Layout from "@/Layout";
 import useUser from "@/hooks/useUser";
-
+import Applications from "./pages/Applications";
+import ApplyInEvent from "./pages/ApplyInEvent";
+import Subscriptions from "./pages/Subscriptions";
+import SuperAdminDashboard from "./pages/SuperAdminDashboard";
+import SuperAdminUsers from "./pages/SuperAdminUsers";
+import SuperAdminEvents from "./pages/SuperAdminEvents";
+import SuperAdminSettings from "./pages/SuperAdminSettings";
 const App = () => {
   const { isLoggedIn } = useUser();
 
@@ -52,6 +58,14 @@ const App = () => {
           element={
             <Layout>
               <Dashboard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/dashboard/applications/apply/:id"
+          element={
+            <Layout>
+              <ApplyInEvent />
             </Layout>
           }
         />
@@ -108,6 +122,54 @@ const App = () => {
           element={
             <Layout>
               <Vault />
+            </Layout>
+          }
+        />
+        <Route
+          path="/applications"
+          element={
+            <Layout>
+              <Applications />
+            </Layout>
+          }
+        />
+        <Route
+          path="/subscriptions"
+          element={
+            <Layout>
+              <Subscriptions />
+            </Layout>
+          }
+        />
+        <Route
+          path="/super-admin"
+          element={
+            <Layout>
+              <SuperAdminDashboard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/super-admin/users"
+          element={
+            <Layout>
+              <SuperAdminUsers />
+            </Layout>
+          }
+        />
+        <Route
+          path="/super-admin/events"
+          element={
+            <Layout>
+              <SuperAdminEvents />
+            </Layout>
+          }
+        />
+        <Route
+          path="/super-admin/settings"
+          element={
+            <Layout>
+              <SuperAdminSettings />
             </Layout>
           }
         />
