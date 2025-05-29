@@ -1,13 +1,14 @@
 import { configureStore } from '@reduxjs/toolkit';
 import investorReducer from './InvestorSlice';
+import eventReducer from './EventSlice';
 
-const store = configureStore({
+export const store = configureStore({
   reducer: {
     investor: investorReducer,
+    event: eventReducer, // Add this reducer
   },
 });
 
-// Define the RootState and AppDispatch types
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 

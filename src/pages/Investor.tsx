@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { fetchInvestors, updateInvestor, clearMessages, createInvestor, deleteInvestor, fetchInvestorById } from '../../InvestorSlice'
 
+// Define the Investor interface (consider moving to a shared types file)
 interface Investor {
   id: string;
   name: string;
@@ -137,6 +138,7 @@ const Investor = () => {
         image: addFormData.image,
       };
 
+      // Optimistic update happens in the slice, so we just dispatch
       const result = await dispatch(createInvestor(investorData));
       
       if (createInvestor.fulfilled.match(result)) {
@@ -227,6 +229,7 @@ const Investor = () => {
         image: editFormData.image || undefined,
       };
 
+      // Optimistic update happens in the slice, so we just dispatch
       const result = await dispatch(updateInvestor({ id: editInvestorId, updatedData }));
       
       if (updateInvestor.fulfilled.match(result)) {
@@ -250,6 +253,7 @@ const Investor = () => {
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this investor?")) return;
 
+    // Optimistic update happens in the slice, so we just dispatch
     await dispatch(deleteInvestor(id));
   };
 
@@ -292,7 +296,7 @@ const Investor = () => {
           </thead>
           <tbody className="divide-y divide-gray-200">
             {investors.map((investor) => (
-              <tr key={investor.id}>
+              <tr key={investor.id} className={investor.id.startsWith('temp-') ? 'opacity-50' : ''}>
                 <td className="px-6 py-4 whitespace-nowrap">{investor.name}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{investor.email}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{investor.company}</td>
@@ -300,18 +304,21 @@ const Investor = () => {
                   <button
                     onClick={() => openViewModal(investor.id)}
                     className="text-blue-600 hover:text-blue-900 mr-2"
+                    disabled={investor.id.startsWith('temp-')}
                   >
                     View
                   </button>
                   <button
                     onClick={() => openEditModal(investor)}
                     className="text-green-600 hover:text-green-900 mr-2"
+                    disabled={investor.id.startsWith('temp-')}
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(investor.id)}
                     className="text-red-600 hover:text-red-900"
+                    disabled={investor.id.startsWith('temp-')}
                   >
                     Delete
                   </button>
@@ -346,6 +353,13 @@ const Investor = () => {
                     className="w-full"
                     accept="image/*"
                   />
+                  {addFormData.image && (
+                    <img
+                      src={URL.createObjectURL(addFormData.image)}
+                      alt="Preview"
+                      className="mt-2 w-32 h-32 object-cover rounded"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Name</label>
@@ -520,6 +534,13 @@ const Investor = () => {
                     className="w-full"
                     accept="image/*"
                   />
+                  {editFormData.image && (
+                    <img
+                      src={URL.createObjectURL(editFormData.image)}
+                      alt="Preview"
+                      className="mt-2 w-32 h-32 object-cover rounded"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Name</label>

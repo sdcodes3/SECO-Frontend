@@ -26,6 +26,9 @@ interface InvestorState {
   loading: boolean;
   error: string | null;
   success: string | null;
+  // Store previous state for reverting optimistic updates
+  previousInvestors: Investor[];
+  previousSelectedInvestor: Investor | null;
 }
 
 // Initial state
@@ -35,6 +38,8 @@ const initialState: InvestorState = {
   loading: false,
   error: null,
   success: null,
+  previousInvestors: [],
+  previousSelectedInvestor: null,
 };
 
 // Async thunk to fetch all investors
@@ -307,32 +312,87 @@ const investorSlice = createSlice({
         state.error = action.payload as string;
       })
       
-      // Create investor
-      .addCase(createInvestor.pending, (state) => {
+      // Create investor with optimistic update
+      .addCase(createInvestor.pending, (state, action) => {
         state.loading = true;
         state.error = null;
         state.success = null;
+        // Optimistic update: Add a temporary investor to the list
+        const tempInvestor: Investor = {
+          id: `temp-${Date.now()}`, // Temporary ID
+          name: action.meta.arg.name,
+          email: action.meta.arg.email,
+          company: action.meta.arg.company,
+          role: action.meta.arg.role,
+          location: action.meta.arg.location,
+          availability: action.meta.arg.availability,
+          bio: action.meta.arg.bio,
+          sectors: action.meta.arg.sectors,
+          expertise: action.meta.arg.expertise,
+          specialization: action.meta.arg.specialization,
+          experience: action.meta.arg.experience,
+          image: action.meta.arg.image ? URL.createObjectURL(action.meta.arg.image) : '',
+        };
+        state.investors.push(tempInvestor);
       })
       .addCase(createInvestor.fulfilled, (state, action) => {
         state.loading = false;
-        state.investors.push(action.payload);
+        // Replace the temporary investor with the actual one from the API
+        const tempIndex = state.investors.findIndex((inv) => inv.id.startsWith('temp-'));
+        if (tempIndex !== -1) {
+          state.investors[tempIndex] = action.payload;
+        }
         state.success = 'Investor created successfully';
         state.error = null;
       })
       .addCase(createInvestor.rejected, (state, action) => {
         state.loading = false;
+        // Remove the temporary investor on failure
+        state.investors = state.investors.filter((inv) => !inv.id.startsWith('temp-'));
         state.error = action.payload as string;
         state.success = null;
       })
       
-      // Update investor
-      .addCase(updateInvestor.pending, (state) => {
+      // Update investor with optimistic update
+      .addCase(updateInvestor.pending, (state, action) => {
         state.loading = true;
         state.error = null;
         state.success = null;
+        // Store the previous state for reverting
+        state.previousInvestors = [...state.investors];
+        state.previousSelectedInvestor = state.selectedInvestor ? { ...state.selectedInvestor } : null;
+        // Optimistic update: Update the investor in the list
+        const index = state.investors.findIndex(
+          (investor) => investor.id === action.meta.arg.id
+        );
+        if (index !== -1) {
+          state.investors[index] = {
+            ...state.investors[index],
+            ...action.meta.arg.updatedData,
+            sectors: action.meta.arg.updatedData.sectors || state.investors[index].sectors,
+            expertise: action.meta.arg.updatedData.expertise || state.investors[index].expertise,
+            image:
+              action.meta.arg.updatedData.image instanceof File
+                ? URL.createObjectURL(action.meta.arg.updatedData.image)
+                : state.investors[index].image,
+          };
+        }
+        if (state.selectedInvestor && state.selectedInvestor.id === action.meta.arg.id) {
+          state.selectedInvestor = {
+            ...state.selectedInvestor,
+            ...action.meta.arg.updatedData,
+            sectors: action.meta.arg.updatedData.sectors || state.selectedInvestor.sectors,
+            expertise: action.meta.arg.updatedData.expertise || state.selectedInvestor.expertise,
+            image:
+              action.meta.arg.updatedData.image instanceof File
+                ? URL.createObjectURL(action.meta.arg.updatedData.image)
+                : state.selectedInvestor.image,
+          };
+        }
       })
       .addCase(updateInvestor.fulfilled, (state, action) => {
         state.loading = false;
+        // Confirm the update with the actual API response
         const index = state.investors.findIndex(
           (investor) => investor.id === action.payload.id
         );
@@ -344,34 +404,60 @@ const investorSlice = createSlice({
         }
         state.success = 'Investor updated successfully';
         state.error = null;
+        // Clear previous state
+        state.previousInvestors = [];
+        state.previousSelectedInvestor = null;
       })
       .addCase(updateInvestor.rejected, (state, action) => {
         state.loading = false;
+        // Revert the optimistic update on failure
+        state.investors = [...state.previousInvestors];
+        state.selectedInvestor = state.previousSelectedInvestor
+          ? { ...state.previousSelectedInvestor }
+          : null;
         state.error = action.payload as string;
         state.success = null;
+        // Clear previous state
+        state.previousInvestors = [];
+        state.previousSelectedInvestor = null;
       })
       
-      // Delete investor
-      .addCase(deleteInvestor.pending, (state) => {
+      // Delete investor with optimistic update
+      .addCase(deleteInvestor.pending, (state, action) => {
         state.loading = true;
         state.error = null;
         state.success = null;
-      })
-      .addCase(deleteInvestor.fulfilled, (state, action) => {
-        state.loading = false;
+        // Store the previous state for reverting
+        state.previousInvestors = [...state.investors];
+        state.previousSelectedInvestor = state.selectedInvestor ? { ...state.selectedInvestor } : null;
+        // Optimistic update: Remove the investor from the list
         state.investors = state.investors.filter(
-          (investor) => investor.id !== action.payload
+          (investor) => investor.id !== action.meta.arg
         );
-        if (state.selectedInvestor && state.selectedInvestor.id === action.payload) {
+        if (state.selectedInvestor && state.selectedInvestor.id === action.meta.arg) {
           state.selectedInvestor = null;
         }
+      })
+      .addCase(deleteInvestor.fulfilled, (state) => {
+        state.loading = false;
         state.success = 'Investor deleted successfully';
         state.error = null;
+        // Clear previous state
+        state.previousInvestors = [];
+        state.previousSelectedInvestor = null;
       })
       .addCase(deleteInvestor.rejected, (state, action) => {
         state.loading = false;
+        // Revert the optimistic update on failure
+        state.investors = [...state.previousInvestors];
+        state.selectedInvestor = state.previousSelectedInvestor
+          ? { ...state.previousSelectedInvestor }
+          : null;
         state.error = action.payload as string;
         state.success = null;
+        // Clear previous state
+        state.previousInvestors = [];
+        state.previousSelectedInvestor = null;
       })
       
       // Search investors

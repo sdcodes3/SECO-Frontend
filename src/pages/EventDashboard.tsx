@@ -1,27 +1,16 @@
 import Header from "../components/Header";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import axiosInstance from "../utils/axios";
-import API_CONSTANTS from "../utils/apiConstants";
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../../store';
+import { fetchEvents, setFilters, clearMessages } from '../../EventSlice'
 
 const EventDashboard = () => {
-  const [events, setEvents] = useState<any[]>([]);
+  const dispatch = useDispatch<AppDispatch>();
+  const { filteredEvents, loading, error, success, uniqueLocations, eventTypes, searchQuery, selectedType, selectedLocation } = useSelector(
+    (state: RootState) => state.event
+  );
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedType, setSelectedType] = useState("All Types");
-  const [selectedLocation, setSelectedLocation] = useState("All Locations");
-  const [filteredEvents, setFilteredEvents] = useState<any[]>([]);
-  const [uniqueLocations, setUniqueLocations] = useState<string[]>([]);
-  const [eventTypes] = useState([
-    "All Types",
-    "networking",
-    "pitch",
-    "workshop",
-    "hackathon",
-    "meetup",
-    "conference",
-    "other",
-  ]);
   const navigate = useNavigate();
 
   const formatDate = (dateString: string) => {
@@ -33,69 +22,33 @@ const EventDashboard = () => {
     const userData = localStorage.getItem("user");
     setIsLoggedIn(!!userData);
 
-    const fetchEvents = async () => {
-      try {
-        const response = await axiosInstance.get(API_CONSTANTS.GET_ALL_EVENTS);
-        const fetchedEvents = response.data.events;
-        setEvents(fetchedEvents);
-        setFilteredEvents(fetchedEvents);
+    // Fetch all events on mount
+    dispatch(fetchEvents());
+  }, [dispatch]);
 
-        // Extract unique locations
-        const locations = [
-          "All Locations",
-          ...Array.from(new Set(fetchedEvents.map((event: any) => event.location_link))) as string[],
-        ];
-        setUniqueLocations(locations);
-      } catch (error) {
-        console.error("Failed to fetch events:", error);
-      }
-    };
-    fetchEvents();
-  }, []);
-
-  // Search and filter function
+  // Clear messages after 5 seconds
   useEffect(() => {
-    let filtered = [...events];
-
-    // Apply search query filter
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (event) =>
-          event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          event.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+    if (error || success) {
+      const timer = setTimeout(() => {
+        dispatch(clearMessages());
+      }, 5000);
+      return () => clearTimeout(timer);
     }
-
-    // Apply type filter
-    if (selectedType !== "All Types") {
-      filtered = filtered.filter(
-        (event) => event.type === selectedType.toLowerCase()
-      );
-    }
-
-    // Apply location filter
-    if (selectedLocation !== "All Locations") {
-      filtered = filtered.filter(
-        (event) => event.location_link === selectedLocation
-      );
-    }
-
-    setFilteredEvents(filtered);
-  }, [searchQuery, selectedType, selectedLocation, events]);
+  }, [error, success, dispatch]);
 
   // Search input handler
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
+    dispatch(setFilters({ searchQuery: e.target.value }));
   };
 
   // Type filter handler
   const handleTypeChange = (type: string) => {
-    setSelectedType(type);
+    dispatch(setFilters({ selectedType: type }));
   };
 
   // Location filter handler
   const handleLocationChange = (location: string) => {
-    setSelectedLocation(location);
+    dispatch(setFilters({ selectedLocation: location }));
   };
 
   const handleViewDetails = (eventId: string) => {
@@ -198,99 +151,117 @@ const EventDashboard = () => {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEvents.map((event) => (
-            <div
-              key={event.id}
-              className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden hover-lift transition-all duration-300 h-full flex flex-col"
-            >
-              <div className="w-full h-48 overflow-hidden">
-                <img
-                  src={
-                    event.banner ||
-                    "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-                  }
-                  alt={event.title}
-                  className="w-full h-full object-cover bg-gray-100"
-                />
-              </div>
-              <div className="flex flex-col space-y-1.5 p-6 pb-2">
-                <div className="flex justify-between items-start mb-2">
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      event.type === "networking"
-                        ? "bg-blue-100 text-blue-800"
-                        : event.type === "conference"
-                        ? "bg-indigo-100 text-indigo-800"
-                        : "bg-green-100 text-green-800"
-                    }`}
+        {loading && <div className="text-center mt-4">Loading...</div>}
+        {!loading && filteredEvents.length === 0 && (
+          <div className="text-center mt-4 text-gray-500">No events found.</div>
+        )}
+        {!loading && filteredEvents.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredEvents.map((event) => (
+              <div
+                key={event.id}
+                className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden hover-lift transition-all duration-300 h-full flex flex-col"
+              >
+                <div className="w-full h-48 overflow-hidden">
+                  <img
+                    src={
+                      event.banner ||
+                      "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                    }
+                    alt={event.title || 'Event Banner'}
+                    className="w-full h-full object-cover bg-gray-100"
+                  />
+                </div>
+                <div className="flex flex-col space-y-1.5 p-6 pb-2">
+                  <div className="flex justify-between items-start mb-2">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        event.type === "networking"
+                          ? "bg-blue-100 text-blue-800"
+                          : event.type === "conference"
+                          ? "bg-indigo-100 text-indigo-800"
+                          : "bg-green-100 text-green-800"
+                      }`}
+                    >
+                      {event.type || 'Unknown'}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {formatDate(event.created_at)}
+                    </span>
+                  </div>
+                  <h3 className="font-semibold tracking-tight text-xl line-clamp-1">
+                    {event.title || 'Untitled Event'}
+                  </h3>
+                </div>
+                <div className="p-6 pt-0 pb-2 flex-grow">
+                  <p className="text-gray-600 text-sm line-clamp-3 mb-4">
+                    {event.description || 'No description available.'}
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center text-sm text-gray-500">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="lucide lucide-calendar h-4 w-4 mr-2"
+                      >
+                        <path d="M8 2v4"></path>
+                        <path d="M16 2v4"></path>
+                        <rect width="18" height="18" x="3" y="4" rx="2"></rect>
+                        <path d="M3 10h18"></path>
+                      </svg>
+                      <span>{event.start_date || 'TBD'}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="lucide lucide-map-pin h-4 w-4 mr-2"
+                      >
+                        <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                      </svg>
+                      <span>{event.location_link || 'TBD'}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center p-6 pt-2">
+                  <button
+                    onClick={() => handleViewDetails(event.id)}
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full"
                   >
-                    {event.type}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {formatDate(event.created_at)}
-                  </span>
-                </div>
-                <h3 className="font-semibold tracking-tight text-xl line-clamp-1">
-                  {event.title}
-                </h3>
-              </div>
-              <div className="p-6 pt-0 pb-2 flex-grow">
-                <p className="text-gray-600 text-sm line-clamp-3 mb-4">
-                  {event.description}
-                </p>
-                <div className="space-y-2">
-                  <div className="flex items-center text-sm text-gray-500">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="lucide lucide-calendar h-4 w-4 mr-2"
-                    >
-                      <path d="M8 2v4"></path>
-                      <path d="M16 2v4"></path>
-                      <rect width="18" height="18" x="3" y="4" rx="2"></rect>
-                      <path d="M3 10h18"></path>
-                    </svg>
-                    <span>{event.start_date}</span>
-                  </div>
-                  <div className="flex items-center text-sm text-gray-500">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="lucide lucide-map-pin h-4 w-4 mr-2"
-                    >
-                      <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
-                      <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
-                    <span>{event.location_link}</span>
-                  </div>
+                    View Details
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center p-6 pt-2">
-                <button
-                  onClick={() => handleViewDetails(event.id)}
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full"
-                >
-                  View Details
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+        {/* Error Alert */}
+        {error && (
+          <div className="fixed bottom-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+        {/* Success Alert */}
+        {success && (
+          <div className="fixed bottom-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+            {success}
+          </div>
+        )}
       </div>
     </div>
   );
