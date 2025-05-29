@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
-import investorReducer from './InvestorSlice';
-import eventReducer from './EventSlice';
+import investorReducer from '../slices/InvestorSlice';
+import eventReducer from '../slices/EventSlice';
 
 export const store = configureStore({
   reducer: {

@@ -1,110 +1,77 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axiosInstance from "../utils/axios";
-import API_CONSTANTS from "../utils/apiConstants";
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../storage/store';
+import {
+  setFormData,
+  setCreatedBy,
+  setStep,
+  setBannerPreview,
+  addStage,
+  removeStage,
+  updateStage,
+  setShowQuestionModal,
+  setQuestionStep,
+  setNewQuestionType,
+  updateNewQuestion,
+  addNewQuestionOption,
+  updateNewQuestionOption,
+  removeNewQuestionOption,
+  addField,
+  updateField,
+  removeField,
+  duplicateField,
+  setActiveTab,
+  updatePreviewFormData,
+  createEvent,
+  saveFormFields,
+  clearMessages,
+  resetCreationState,
+  setError,
+} from '../slices/EventSlice'
 import Input from "@/components/UI/Input";
 
-interface EventFormData {
-  title: string;
-  description: string;
-  start_date: string;
-  end_date: string;
-  location_link: string;
-  type: string;
-  created_by: string;
-  capacity: number | string;
-  website: string;
-  judges_emails: string;
-  is_virtual?: boolean;
-  stages?: Stage[];
-}
-
-interface Stage {
-  id: string;
-  name: string;
-  description: string;
-  start_date: string;
-  start_time: string;
-  end_date: string;
-  end_time: string;
-}
-
 const CreateEvent = () => {
-  const [step, setStep] = useState(1);
-  const [fields, setFields] = useState<any[]>([]);
-  const [stages, setStages] = useState<Stage[]>([
-    {
-      id: "1",
-      name: "",
-      description: "",
-      start_date: "",
-      start_time: "",
-      end_date: "",
-      end_time: ""
-    }
-  ]);
-  const [eventId, setEventId] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [errorFields, setErrorFields] = useState<EventFormData>({
-    title: "",
-    description: "",
-    start_date: "",
-    end_date: "",
-    location_link: "",
-    type: "",
-    capacity: "",
-    website: "",
-    judges_emails: "",
-    created_by: "",
-    is_virtual: false,
-    stages: []
-  });
-  const [formData, setFormData] = useState<EventFormData>({
-    title: "",
-    description: "",
-    start_date: new Date().toISOString().split("T")[0], // Format: YYYY-MM-DD
-    end_date: new Date().toISOString().split("T")[0], // Format: YYYY-MM-DD
-    location_link: "",
-    type: "networking", // default value
-    created_by: "", // Will be set from localStorage,
-    capacity: 0,
-    website: "",
-    judges_emails: "",
-    is_virtual: false,
-    stages: []
-  });
-  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const [showQuestionModal, setShowQuestionModal] = useState(false);
-  const [questionStep, setQuestionStep] = useState(1);
-  const [newQuestionType, setNewQuestionType] = useState<string | null>(null);
-  const [newQuestion, setNewQuestion] = useState<any>({
-    label: "",
-    type: "",
-    required: false,
-    options: [""]
-  });
-  const [previewFormData, setPreviewFormData] = useState<Record<string, any>>(
-    {}
-  );
-  const [previewErrors, setPreviewErrors] = useState<Record<string, string>>(
-    {}
-  );
-  const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
+  const {
+    formData,
+    stages,
+    fields,
+    eventId,
+    bannerPreview,
+    step,
+    showQuestionModal,
+    questionStep,
+    newQuestion,
+    activeTab,
+    previewFormData,
+    previewErrors,
+    loading,
+    error,
+    success,
+  } = useSelector((state: RootState) => state.event.creation);
 
   useEffect(() => {
-    // Get user data from localStorage
     const userData = localStorage.getItem("user");
     if (userData) {
       const user = JSON.parse(userData);
-      setFormData((prev) => ({
-        ...prev,
-        created_by: user.id
-      }));
+      dispatch(setCreatedBy(user.id));
     }
-  }, []);
+
+    return () => {
+      dispatch(clearMessages());
+    };
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (error || success) {
+      const timer = setTimeout(() => {
+        dispatch(clearMessages());
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, success, dispatch]);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -112,246 +79,55 @@ const CreateEvent = () => {
     >
   ) => {
     const { name, value, type } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]:
-        type === "checkbox" ? (e.target as HTMLInputElement).checked : value
-    }));
+    dispatch(
+      setFormData({
+        [name]:
+          type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+      })
+    );
   };
-  const validateForm = (): EventFormData => {
-    return {
-      created_by: "",
-      website: "",
-      judges_emails: "",
-      title: formData.title.trim() ? "" : "Title is required",
-      description: formData.description.trim() ? "" : "Description is required",
-      start_date: formData.start_date ? "" : "Start date is required",
-      end_date: formData.end_date ? "" : "End date is required",
-      location_link: formData.location_link.trim()
-        ? ""
-        : "Location is required",
-      type: formData.type ? "" : "Type is required",
-      capacity: ""
-    };
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    if (!formData.title.trim()) errors.title = "Title is required";
+    if (!formData.description.trim()) errors.description = "Description is required";
+    if (!formData.start_date) errors.start_date = "Start date is required";
+    if (!formData.end_date) errors.end_date = "End date is required";
+    if (!formData.location_link.trim()) errors.location_link = "Location is required";
+    if (!formData.type) errors.type = "Type is required";
+    return errors;
   };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const errorFields = validateForm();
-    const isError = Object.values(errorFields).some((value) => value !== "");
-    console.log(errorFields);
-    console.log(isError);
-    if (isError) {
-      setErrorFields(errorFields);
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      dispatch(setFormData({ errors }));
       return;
-    } else {
-      try {
-        setLoading(true);
-        setError(null);
-        setSuccess(null);
-
-        // Format dates for Supabase (YYYY-MM-DD)
-        const formattedData = {
-          ...formData,
-          start_date: formData.start_date,
-          end_date: formData.end_date,
-          is_virtual: formData.is_virtual || false,
-          stages: JSON.stringify(
-            stages.map((stage) => ({
-              name: stage.name,
-              description: stage.description,
-              start_date: stage.start_date,
-              start_time: stage.start_time,
-              end_date: stage.end_date,
-              end_time: stage.end_time,
-              order: stages.indexOf(stage) + 1
-            }))
-          )
-        };
-
-        // Create FormData instance
-        const formDataToSend = new FormData();
-
-        // Append all event data
-        formDataToSend.append("title", formattedData.title);
-        formDataToSend.append("description", formattedData.description);
-        formDataToSend.append("location_link", formattedData.location_link);
-        formDataToSend.append("start_date", formattedData.start_date);
-        formDataToSend.append("end_date", formattedData.end_date);
-        formDataToSend.append("created_by", formattedData.created_by);
-        formDataToSend.append("type", formattedData.type);
-        formDataToSend.append("capacity", formattedData.capacity.toString());
-        formDataToSend.append("website", formattedData.website);
-        formDataToSend.append("judges_emails", formattedData.judges_emails);
-        formDataToSend.append(
-          "is_virtual",
-          formattedData.is_virtual.toString()
-        );
-        formDataToSend.append("stages", formattedData.stages);
-
-        // Append banner file if exists
-        const bannerInput = document.getElementById(
-          "event-banner-input"
-        ) as HTMLInputElement;
-        if (bannerInput?.files?.[0]) {
-          formDataToSend.append("banner", bannerInput.files[0]);
-        }
-
-        const response = await axiosInstance.post(
-          API_CONSTANTS.ADD_EVENT,
-          formDataToSend,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data"
-            }
-          }
-        );
-
-        // Make sure we're setting the event ID correctly
-        if (response.data.event && response.data.event.id) {
-          setEventId(response.data.event.id);
-          setSuccess("Event created successfully!");
-          setStep(2);
-        } else {
-          setError("Failed to get event ID from response");
-        }
-      } catch (error) {
-        console.error("Error creating event:", error);
-        setError("Failed to create event. Please try again.");
-      } finally {
-        setLoading(false);
-      }
     }
-  };
 
-  const handleAddField = () => {
-    setShowQuestionModal(true);
-    setQuestionStep(1);
-    setNewQuestionType(null);
-    setNewQuestion({
-      label: "",
-      type: "",
-      required: false,
-      options: [""]
-    });
+    const bannerInput = document.getElementById("event-banner-input") as HTMLInputElement;
+    const file = bannerInput?.files?.[0] || null;
+    dispatch(createEvent({ formData, stages, file }));
   };
 
   const handleSaveForm = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
-
-      if (!eventId) {
-        setError("Event ID is missing. Please create the event first.");
-        return;
-      }
-
-      const userData = localStorage.getItem("user");
-      if (!userData) {
-        setError("Please login to save form");
-        return;
-      }
-
-      // Transform fields into the required format
-      const formFields = fields.map((field, index) => ({
-        event_id: eventId,
-        type: field.type,
-        details: {
-          label: field.label,
-          placeholder: field.placeholder,
-          description: field.description,
-          options: field.type === "select" ? field.options : undefined
-        },
-        order: index + 1,
-        required: field.required || false
-      }));
-
-      const response = await axiosInstance.post(
-        API_CONSTANTS.ADD_MANY_FORM,
-        formFields
-      );
-      if (response.status === 200) {
-        setSuccess("Form fields saved successfully!");
-      }
-    } catch (error) {
-      console.error("Error saving form fields:", error);
-      setError("Failed to save form fields. Please try again.");
-    } finally {
-      setLoading(false);
+    if (!eventId) {
+      dispatch(setError("Event ID is missing. Please create the event first."));
+      return;
     }
+    dispatch(saveFormFields({ eventId, fields }));
   };
-
   const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setBannerPreview(URL.createObjectURL(file));
+      dispatch(setBannerPreview(URL.createObjectURL(file)));
     }
   };
 
   const handleRemoveBanner = () => {
-    setBannerPreview(null);
-    (document.getElementById("event-banner-input") as HTMLInputElement).value =
-      "";
-  };
-
-  const handleStageChange = (
-    index: number,
-    field: keyof Stage,
-    value: string
-  ) => {
-    const newStages = [...stages];
-    newStages[index] = {
-      ...newStages[index],
-      [field]: value
-    };
-    setStages(newStages);
-  };
-
-  const addStage = () => {
-    setStages([
-      ...stages,
-      {
-        id: Date.now().toString(),
-        name: "",
-        description: "",
-        start_date: "",
-        start_time: "",
-        end_date: "",
-        end_time: ""
-      }
-    ]);
-  };
-
-  const removeStage = (index: number) => {
-    if (stages.length > 1) {
-      const newStages = stages.filter((_, i) => i !== index);
-      setStages(newStages);
-    }
-  };
-
-  const handlePreviewInputChange = (
-    fieldId: string,
-    value: any,
-    required: boolean
-  ) => {
-    setPreviewFormData((prev) => ({
-      ...prev,
-      [fieldId]: value
-    }));
-
-    // Validate the field
-    if (required && !value) {
-      setPreviewErrors((prev) => ({
-        ...prev,
-        [fieldId]: "This field is required"
-      }));
-    } else {
-      setPreviewErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[fieldId];
-        return newErrors;
-      });
-    }
+    dispatch(setBannerPreview(null));
+    (document.getElementById("event-banner-input") as HTMLInputElement).value = "";
   };
 
   const renderPreviewForm = () => {
@@ -367,16 +143,16 @@ const CreateEvent = () => {
             {field.type === "text" && (
               <input
                 type="text"
-                className={`w-full rounded-md border ${
-                  previewErrors[field.id] ? "border-red-500" : "border-input"
-                } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
-                placeholder={field.placeholder || "Enter your answer"}
+                className={`w-full rounded-md border ${previewErrors[field.id] ? "border-red-500" : "border-input"
+                  } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
                 value={previewFormData[field.id] || ""}
                 onChange={(e) =>
-                  handlePreviewInputChange(
-                    field.id,
-                    e.target.value,
-                    field.required
+                  dispatch(
+                    updatePreviewFormData({
+                      fieldId: field.id.toString(),
+                      value: e.target.value,
+                      required: field.required,
+                    })
                   )
                 }
               />
@@ -384,16 +160,16 @@ const CreateEvent = () => {
 
             {field.type === "textarea" && (
               <textarea
-                className={`w-full rounded-md border ${
-                  previewErrors[field.id] ? "border-red-500" : "border-input"
-                } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-h-[100px]`}
-                placeholder={field.placeholder || "Enter your answer"}
+                className={`w-full rounded-md border ${previewErrors[field.id] ? "border-red-500" : "border-input"
+                  } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-h-[100px]`}
                 value={previewFormData[field.id] || ""}
                 onChange={(e) =>
-                  handlePreviewInputChange(
-                    field.id,
-                    e.target.value,
-                    field.required
+                  dispatch(
+                    updatePreviewFormData({
+                      fieldId: field.id.toString(),
+                      value: e.target.value,
+                      required: field.required,
+                    })
                   )
                 }
               />
@@ -405,14 +181,16 @@ const CreateEvent = () => {
                   <label key={index} className="flex items-center space-x-2">
                     <input
                       type="radio"
-                      name={field.id}
+                      name={field.id.toString()}
                       value={option}
                       checked={previewFormData[field.id] === option}
                       onChange={(e) =>
-                        handlePreviewInputChange(
-                          field.id,
-                          e.target.value,
-                          field.required
+                        dispatch(
+                          updatePreviewFormData({
+                            fieldId: field.id.toString(),
+                            value: e.target.value,
+                            required: field.required,
+                          })
                         )
                       }
                       className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
@@ -436,10 +214,12 @@ const CreateEvent = () => {
                         const newValues = e.target.checked
                           ? [...currentValues, option]
                           : currentValues.filter((v: string) => v !== option);
-                        handlePreviewInputChange(
-                          field.id,
-                          newValues,
-                          field.required
+                        dispatch(
+                          updatePreviewFormData({
+                            fieldId: field.id.toString(),
+                            value: newValues,
+                            required: field.required,
+                          })
                         );
                       }}
                       className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
@@ -453,15 +233,16 @@ const CreateEvent = () => {
             {field.type === "date" && (
               <input
                 type="date"
-                className={`w-full rounded-md border ${
-                  previewErrors[field.id] ? "border-red-500" : "border-input"
-                } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                className={`w-full rounded-md border ${previewErrors[field.id] ? "border-red-500" : "border-input"
+                  } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
                 value={previewFormData[field.id] || ""}
                 onChange={(e) =>
-                  handlePreviewInputChange(
-                    field.id,
-                    e.target.value,
-                    field.required
+                  dispatch(
+                    updatePreviewFormData({
+                      fieldId: field.id.toString(),
+                      value: e.target.value,
+                      required: field.required,
+                    })
                   )
                 }
               />
@@ -470,15 +251,16 @@ const CreateEvent = () => {
             {field.type === "time" && (
               <input
                 type="time"
-                className={`w-full rounded-md border ${
-                  previewErrors[field.id] ? "border-red-500" : "border-input"
-                } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                className={`w-full rounded-md border ${previewErrors[field.id] ? "border-red-500" : "border-input"
+                  } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
                 value={previewFormData[field.id] || ""}
                 onChange={(e) =>
-                  handlePreviewInputChange(
-                    field.id,
-                    e.target.value,
-                    field.required
+                  dispatch(
+                    updatePreviewFormData({
+                      fieldId: field.id.toString(),
+                      value: e.target.value,
+                      required: field.required,
+                    })
                   )
                 }
               />
@@ -487,14 +269,15 @@ const CreateEvent = () => {
             {field.type === "file" && (
               <input
                 type="file"
-                className={`w-full rounded-md border ${
-                  previewErrors[field.id] ? "border-red-500" : "border-input"
-                } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                className={`w-full rounded-md border ${previewErrors[field.id] ? "border-red-500" : "border-input"
+                  } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
                 onChange={(e) =>
-                  handlePreviewInputChange(
-                    field.id,
-                    e.target.files?.[0],
-                    field.required
+                  dispatch(
+                    updatePreviewFormData({
+                      fieldId: field.id.toString(),
+                      value: e.target.files?.[0],
+                      required: field.required,
+                    })
                   )
                 }
               />
@@ -507,13 +290,18 @@ const CreateEvent = () => {
                     key={rating}
                     type="button"
                     onClick={() =>
-                      handlePreviewInputChange(field.id, rating, field.required)
+                      dispatch(
+                        updatePreviewFormData({
+                          fieldId: field.id.toString(),
+                          value: rating,
+                          required: field.required,
+                        })
+                      )
                     }
-                    className={`text-2xl ${
-                      previewFormData[field.id] >= rating
-                        ? "text-yellow-400"
-                        : "text-gray-300"
-                    }`}
+                    className={`text-2xl ${previewFormData[field.id] >= rating
+                      ? "text-yellow-400"
+                      : "text-gray-300"
+                      }`}
                   >
                     ★
                   </button>
@@ -536,7 +324,7 @@ const CreateEvent = () => {
       weekday: "long",
       year: "numeric",
       month: "long",
-      day: "numeric"
+      day: "numeric",
     });
   };
 
@@ -545,7 +333,7 @@ const CreateEvent = () => {
     return date.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "numeric",
-      hour12: true
+      hour12: true,
     });
   };
 
@@ -648,7 +436,7 @@ const CreateEvent = () => {
                       const dateObj = new Date(stage.start_date);
                       const day = dateObj.getDate();
                       const month = dateObj.toLocaleString("en-US", {
-                        month: "short"
+                        month: "short",
                       });
 
                       return (
@@ -732,14 +520,14 @@ const CreateEvent = () => {
                         {formData.type}
                       </p>
                     </div>
-                    {formData.capacity && (
+                    {formData.capacity ? (
                       <div>
                         <h3 className="text-sm font-medium">Capacity</h3>
                         <p className="text-sm text-muted-foreground">
                           {formData.capacity} attendees
                         </p>
                       </div>
-                    )}
+                    ) : null}
                     {formData.website && (
                       <div>
                         <h3 className="text-sm font-medium">Website</h3>
@@ -757,14 +545,17 @@ const CreateEvent = () => {
             <button
               className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
               type="button"
-              onClick={() => setStep(2)}
+              onClick={() => dispatch(setStep(2))}
             >
               Back to Form Builder
             </button>
             <button
               className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
               type="button"
-              onClick={() => navigate("/my-events")}
+              onClick={() => {
+                navigate("/my-events");
+                dispatch(resetCreationState());
+              }}
             >
               Publish Event
             </button>
@@ -844,7 +635,7 @@ const CreateEvent = () => {
                         type="text"
                         placeholder="Enter event title"
                         description="A clear, concise title for your event"
-                        error={errorFields.title}
+                        error={(formData as any).errors?.title}
                       />
                     </div>
                     <div className="space-y-2">
@@ -958,25 +749,6 @@ const CreateEvent = () => {
                     </div>
 
                     <div className="space-y-2">
-                      {/* <label
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        htmlFor=":rc2:-form-item"
-                      >
-                        Event Description
-                      </label>
-                      <textarea
-                        className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        placeholder="Describe your event..."
-                        name="description"
-                        value={formData.description}
-                        onChange={handleInputChange}
-                      ></textarea>
-                      <p
-                        id=":rc2:-form-item-description"
-                        className="text-sm text-muted-foreground"
-                      >
-                        Provide details about your event
-                      </p> */}
                       <Input
                         value={formData.description}
                         handleChange={handleInputChange}
@@ -985,7 +757,7 @@ const CreateEvent = () => {
                         type="textarea"
                         placeholder="Describe your event..."
                         description="Provide details about your event"
-                        error={errorFields.description}
+                        error={(formData as any).errors?.description}
                       />
                     </div>
                     <div className="space-y-4">
@@ -993,7 +765,7 @@ const CreateEvent = () => {
                         <h3 className="text-lg font-semibold">Event Stages</h3>
                         <button
                           type="button"
-                          onClick={addStage}
+                          onClick={() => dispatch(addStage())}
                           className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
                         >
                           <svg
@@ -1030,7 +802,7 @@ const CreateEvent = () => {
                               {stages.length > 1 && (
                                 <button
                                   type="button"
-                                  onClick={() => removeStage(index)}
+                                  onClick={() => dispatch(removeStage(index))}
                                   className="text-red-500 hover:text-red-700"
                                 >
                                   <svg
@@ -1067,10 +839,12 @@ const CreateEvent = () => {
                                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                   value={stage.name}
                                   onChange={(e) =>
-                                    handleStageChange(
-                                      index,
-                                      "name",
-                                      e.target.value
+                                    dispatch(
+                                      updateStage({
+                                        index,
+                                        field: "name",
+                                        value: e.target.value,
+                                      })
                                     )
                                   }
                                 />
@@ -1088,10 +862,12 @@ const CreateEvent = () => {
                                   className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                   value={stage.description}
                                   onChange={(e) =>
-                                    handleStageChange(
-                                      index,
-                                      "description",
-                                      e.target.value
+                                    dispatch(
+                                      updateStage({
+                                        index,
+                                        field: "description",
+                                        value: e.target.value,
+                                      })
                                     )
                                   }
                                 />
@@ -1110,10 +886,12 @@ const CreateEvent = () => {
                                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                   value={stage.start_date}
                                   onChange={(e) =>
-                                    handleStageChange(
-                                      index,
-                                      "start_date",
-                                      e.target.value
+                                    dispatch(
+                                      updateStage({
+                                        index,
+                                        field: "start_date",
+                                        value: e.target.value,
+                                      })
                                     )
                                   }
                                 />
@@ -1132,10 +910,12 @@ const CreateEvent = () => {
                                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                   value={stage.start_time}
                                   onChange={(e) =>
-                                    handleStageChange(
-                                      index,
-                                      "start_time",
-                                      e.target.value
+                                    dispatch(
+                                      updateStage({
+                                        index,
+                                        field: "start_time",
+                                        value: e.target.value,
+                                      })
                                     )
                                   }
                                 />
@@ -1154,10 +934,12 @@ const CreateEvent = () => {
                                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                   value={stage.end_date}
                                   onChange={(e) =>
-                                    handleStageChange(
-                                      index,
-                                      "end_date",
-                                      e.target.value
+                                    dispatch(
+                                      updateStage({
+                                        index,
+                                        field: "end_date",
+                                        value: e.target.value,
+                                      })
                                     )
                                   }
                                 />
@@ -1176,10 +958,12 @@ const CreateEvent = () => {
                                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                   value={stage.end_time}
                                   onChange={(e) =>
-                                    handleStageChange(
-                                      index,
-                                      "end_time",
-                                      e.target.value
+                                    dispatch(
+                                      updateStage({
+                                        index,
+                                        field: "end_time",
+                                        value: e.target.value,
+                                      })
                                     )
                                   }
                                 />
@@ -1221,7 +1005,7 @@ const CreateEvent = () => {
                         type="number"
                         placeholder="Maximum number of attendees"
                         description="Leave empty for unlimited capacity"
-                        error={errorFields.capacity.toString()}
+                        error={(formData as any).errors?.capacity?.toString()}
                       />
                     </div>
 
@@ -1255,7 +1039,7 @@ const CreateEvent = () => {
                         name="location_link"
                         type="text"
                         placeholder="Event venue or address"
-                        error={errorFields.location_link}
+                        error={(formData as any).errors?.location_link}
                       />
                       {formData.is_virtual && (
                         <p className="text-sm text-muted-foreground">
@@ -1287,16 +1071,23 @@ const CreateEvent = () => {
                     <div className="flex justify-end space-x-4">
                       <button
                         type="button"
-                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
-                      >
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
                         Cancel
                       </button>
                       <button
                         type="submit"
                         className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-                        onClick={(e) => handleSubmit(e)}
+                        onClick={handleSubmit}
+                        disabled={loading}
                       >
-                        Continue
+                        {loading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Creating...
+                          </>
+                        ) : (
+                          "Continue"
+                        )}
                       </button>
                     </div>
                   </form>
@@ -1417,12 +1208,11 @@ const CreateEvent = () => {
                               activeTab === "edit" ? "active" : "inactive"
                             }
                             id="radix-:r1b:-trigger-edit"
-                            className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
-                              activeTab === "edit"
-                                ? "bg-background text-foreground shadow-sm"
-                                : "text-muted-foreground"
-                            }`}
-                            onClick={() => setActiveTab("edit")}
+                            className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${activeTab === "edit"
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground"
+                              }`}
+                            onClick={() => dispatch(setActiveTab("edit"))}
                           >
                             Edit Form
                           </button>
@@ -1435,12 +1225,11 @@ const CreateEvent = () => {
                               activeTab === "preview" ? "active" : "inactive"
                             }
                             id="radix-:r1b:-trigger-preview"
-                            className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
-                              activeTab === "preview"
-                                ? "bg-background text-foreground shadow-sm"
-                                : "text-muted-foreground"
-                            }`}
-                            onClick={() => setActiveTab("preview")}
+                            className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${activeTab === "preview"
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground"
+                              }`}
+                            onClick={() => dispatch(setActiveTab("preview"))}
                           >
                             Preview Form
                           </button>
@@ -1456,7 +1245,7 @@ const CreateEvent = () => {
                           tabIndex={0}
                           className="ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 mt-0"
                           style={{
-                            display: activeTab === "edit" ? "block" : "none"
+                            display: activeTab === "edit" ? "block" : "none",
                           }}
                         >
                           <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
@@ -1524,14 +1313,17 @@ const CreateEvent = () => {
                                                   <input
                                                     type="checkbox"
                                                     checked={field.required}
-                                                    onChange={(e) => {
-                                                      const newFields = [
-                                                        ...fields
-                                                      ];
-                                                      newFields[idx].required =
-                                                        e.target.checked;
-                                                      setFields(newFields);
-                                                    }}
+                                                    onChange={(e) =>
+                                                      dispatch(
+                                                        updateField({
+                                                          index: idx,
+                                                          updates: {
+                                                            required:
+                                                              e.target.checked,
+                                                          },
+                                                        })
+                                                      )
+                                                    }
                                                     className="accent-blue-600"
                                                   />
                                                   <span className="text-sm">
@@ -1541,19 +1333,9 @@ const CreateEvent = () => {
                                                 <button
                                                   className="text-gray-500 hover:text-blue-600"
                                                   title="Duplicate"
-                                                  onClick={() => {
-                                                    setFields([
-                                                      ...fields.slice(
-                                                        0,
-                                                        idx + 1
-                                                      ),
-                                                      {
-                                                        ...field,
-                                                        id: Date.now()
-                                                      },
-                                                      ...fields.slice(idx + 1)
-                                                    ]);
-                                                  }}
+                                                  onClick={() =>
+                                                    dispatch(duplicateField(idx))
+                                                  }
                                                 >
                                                   <svg
                                                     width="18"
@@ -1582,11 +1364,7 @@ const CreateEvent = () => {
                                                   className="text-gray-500 hover:text-red-600"
                                                   title="Delete"
                                                   onClick={() =>
-                                                    setFields(
-                                                      fields.filter(
-                                                        (f) => f.id !== field.id
-                                                      )
-                                                    )
+                                                    dispatch(removeField(field.id))
                                                   }
                                                 >
                                                   <svg
@@ -1632,156 +1410,164 @@ const CreateEvent = () => {
                                                 </button>
                                               </div>
                                             </div>
-                                            {/* Options for radio/checkbox */}
+                                            <div className="space-y-2">
+                                              <label className="text-sm font-medium leading-none">
+                                                Label
+                                              </label>
+                                              <input
+                                                type="text"
+                                                value={field.label}
+                                                onChange={(e) =>
+                                                  dispatch(
+                                                    updateField({
+                                                      index: idx,
+                                                      updates: {
+                                                        label: e.target.value,
+                                                      },
+                                                    })
+                                                  )
+                                                }
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                placeholder="Enter field label"
+                                              />
+                                            </div>
                                             {(field.type === "radio" ||
                                               field.type === "checkbox") && (
-                                              <div className="ml-8">
-                                                {field.options?.map(
-                                                  (
-                                                    opt: string,
-                                                    oidx: number
-                                                  ) => (
-                                                    <div
-                                                      key={oidx}
-                                                      className="flex items-center mb-1"
-                                                    >
-                                                      <input
-                                                        type={field.type}
-                                                        className="mr-2"
-                                                        disabled
-                                                      />
-                                                      <span>
-                                                        {opt ||
-                                                          `Option ${oidx + 1}`}
-                                                      </span>
-                                                      <button
-                                                        className="ml-2 text-gray-400 hover:text-red-500"
-                                                        onClick={() => {
-                                                          const newFields = [
-                                                            ...fields
-                                                          ];
-                                                          newFields[
-                                                            idx
-                                                          ].options = newFields[
-                                                            idx
-                                                          ].options.filter(
-                                                            (
-                                                              _: any,
-                                                              i: number
-                                                            ) => i !== oidx
-                                                          );
-                                                          setFields(newFields);
-                                                        }}
-                                                        disabled={
-                                                          field.options
-                                                            .length <= 1
-                                                        }
-                                                        title="Delete Option"
+                                                <div className="space-y-2">
+                                                  <label className="text-sm font-medium leading-none">
+                                                    Options
+                                                  </label>
+                                                  {field.options?.map(
+                                                    (option, optIdx) => (
+                                                      <div
+                                                        key={optIdx}
+                                                        className="flex items-center gap-2"
                                                       >
-                                                        <svg
-                                                          width="16"
-                                                          height="16"
-                                                          fill="none"
-                                                          stroke="currentColor"
-                                                          strokeWidth={2}
-                                                        >
-                                                          <line
-                                                            x1="4"
-                                                            y1="4"
-                                                            x2="12"
-                                                            y2="12"
-                                                          />
-                                                          <line
-                                                            x1="12"
-                                                            y1="4"
-                                                            x2="4"
-                                                            y2="12"
-                                                          />
-                                                        </svg>
-                                                      </button>
-                                                    </div>
-                                                  )
-                                                )}
-                                                <button
-                                                  className="text-blue-600 text-sm mt-1"
-                                                  onClick={(e) => {
-                                                    e.preventDefault();
-                                                    const newFields = [
-                                                      ...fields
-                                                    ];
-                                                    newFields[idx].options = [
-                                                      ...newFields[idx].options,
-                                                      ""
-                                                    ];
-                                                    setFields(newFields);
-                                                  }}
-                                                >
-                                                  + Add Option
-                                                </button>
-                                              </div>
-                                            )}
+                                                        <input
+                                                          type="text"
+                                                          value={option}
+                                                          onChange={(e) =>
+                                                            dispatch(
+                                                              updateField({
+                                                                index: idx,
+                                                                updates: {
+                                                                  options: field.options?.map(
+                                                                    (opt, i) =>
+                                                                      i === optIdx
+                                                                        ? e.target
+                                                                          .value
+                                                                        : opt
+                                                                  ),
+                                                                },
+                                                              })
+                                                            )
+                                                          }
+                                                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                          placeholder={`Option ${optIdx + 1
+                                                            }`}
+                                                        />
+                                                        {field.options &&
+                                                          field.options.length >
+                                                          1 && (
+                                                            <button
+                                                              type="button"
+                                                              onClick={() =>
+                                                                dispatch(
+                                                                  updateField({
+                                                                    index: idx,
+                                                                    updates: {
+                                                                      options:
+                                                                        field.options?.filter(
+                                                                          (
+                                                                            _,
+                                                                            i
+                                                                          ) =>
+                                                                            i !==
+                                                                            optIdx
+                                                                        ),
+                                                                    },
+                                                                  })
+                                                                )
+                                                              }
+                                                              className="text-red-500 hover:text-red-700"
+                                                            >
+                                                              <svg
+                                                                width="18"
+                                                                height="18"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                strokeWidth={2}
+                                                              >
+                                                                <line
+                                                                  x1="6"
+                                                                  y1="6"
+                                                                  x2="18"
+                                                                  y2="18"
+                                                                />
+                                                                <line
+                                                                  x1="18"
+                                                                  y1="6"
+                                                                  x2="6"
+                                                                  y2="18"
+                                                                />
+                                                              </svg>
+                                                            </button>
+                                                          )}
+                                                      </div>
+                                                    )
+                                                  )}
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      dispatch(
+                                                        updateField({
+                                                          index: idx,
+                                                          updates: {
+                                                            options: [
+                                                              ...(field.options ||
+                                                                []),
+                                                              "",
+                                                            ],
+                                                          },
+                                                        })
+                                                      )
+                                                    }
+                                                    className="text-primary hover:underline text-sm"
+                                                  >
+                                                    Add Option
+                                                  </button>
+                                                </div>
+                                              )}
                                           </div>
                                         ))
                                       )}
                                     </div>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <button
-                                      className="justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 flex items-center"
-                                      type="button"
-                                      onClick={handleAddField}
-                                      disabled={loading}
-                                    >
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="24"
-                                        height="24"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="2"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        className="lucide lucide-plus mr-1 h-4 w-4"
+                                    <div className="flex justify-center mt-6">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          dispatch(setShowQuestionModal(true))
+                                        }
+                                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
                                       >
-                                        <path d="M5 12h14"></path>
-                                        <path d="M12 5v14"></path>
-                                      </svg>
-                                      Add Field
-                                    </button>
-                                    <button
-                                      className="justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 flex items-center"
-                                      type="button"
-                                      onClick={handleSaveForm}
-                                      disabled={loading}
-                                    >
-                                      {loading ? (
-                                        <>
-                                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                          Saving...
-                                        </>
-                                      ) : (
-                                        <>
-                                          <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            width="24"
-                                            height="24"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="2"
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            className="lucide lucide-save mr-1 h-4 w-4"
-                                          >
-                                            <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path>
-                                            <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"></path>
-                                            <path d="M7 3v4a1 1 0 0 0 1 1h7"></path>
-                                          </svg>
-                                          Save Form
-                                        </>
-                                      )}
-                                    </button>
+                                        <svg
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          width="24"
+                                          height="24"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          className="lucide lucide-plus mr-1 h-4 w-4"
+                                        >
+                                          <path d="M5 12h14"></path>
+                                          <path d="M12 5v14"></path>
+                                        </svg>
+                                        Add Field
+                                      </button>
+                                    </div>
                                   </div>
                                 </form>
                               </div>
@@ -1799,30 +1585,22 @@ const CreateEvent = () => {
                           tabIndex={0}
                           className="ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 mt-0"
                           style={{
-                            display: activeTab === "preview" ? "block" : "none"
+                            display: activeTab === "preview" ? "block" : "none",
                           }}
                         >
                           <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
                             <div className="p-6 pt-6">
-                              <div className="space-y-4">
-                                <div
-                                  role="alert"
-                                  className="relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground bg-background text-foreground"
-                                >
-                                  <div className="text-sm [&_p]:leading-relaxed">
-                                    This is how your registration form will
-                                    appear to participants.
-                                  </div>
+                              <h2 className="text-xl font-semibold mb-4">
+                                Form Preview
+                              </h2>
+                              {fields.length === 0 ? (
+                                <div className="text-center p-8 border border-dashed rounded-md text-muted-foreground">
+                                  No fields to preview. Add fields in the "Edit
+                                  Form" tab to see how your form will look.
                                 </div>
-                                {fields.length === 0 ? (
-                                  <div className="text-center p-8 border border-dashed rounded-md text-muted-foreground">
-                                    No fields added yet. Add some fields in the
-                                    Edit Form tab to see the preview.
-                                  </div>
-                                ) : (
-                                  renderPreviewForm()
-                                )}
-                              </div>
+                              ) : (
+                                renderPreviewForm()
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1831,21 +1609,27 @@ const CreateEvent = () => {
                   </div>
                   <div className="flex justify-end space-x-4 mt-6">
                     <button
-                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
                       type="button"
-                      onClick={() => setStep(3)}
+                      onClick={handleSaveForm}
+                      disabled={loading}
                     >
-                      Skip Form Builder
+                      {loading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Saving...
+                        </>
+                      ) : (
+                        "Save Form"
+                      )}
                     </button>
                     <button
                       className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
                       type="button"
-                      onClick={() => {
-                        handleSaveForm();
-                        setStep(3);
-                      }}
+                      onClick={() => dispatch(setStep(3))}
+                      disabled={loading}
                     >
-                      Finish
+                      Preview Event
                     </button>
                   </div>
                 </div>
@@ -1856,12 +1640,13 @@ const CreateEvent = () => {
           renderEventPreview()
         )}
       </div>
+
       {showQuestionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-xl p-6 relative">
             <button
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-              onClick={() => setShowQuestionModal(false)}
+              onClick={() => dispatch(setShowQuestionModal(false))}
             >
               <svg
                 width="24"
@@ -1874,9 +1659,9 @@ const CreateEvent = () => {
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
-            <h2 className="text-xl font-bold mb-4">Questions</h2>
-            {questionStep === 1 && (
+            {questionStep === 1 ? (
               <>
+                <h2 className="text-xl font-bold mb-4">Questions</h2>
                 <div className="mb-4 font-semibold">Add Questions</div>
                 <div className="grid grid-cols-4 gap-4 mb-6">
                   {[
@@ -1886,144 +1671,140 @@ const CreateEvent = () => {
                     { type: "checkbox", label: "Checkboxes", icon: "☑" },
                     { type: "date", label: "Date", icon: "📅" },
                     { type: "time", label: "Time", icon: "⏰" },
-                    { type: "file", label: "File Upload", icon: "⤴" },
-                    { type: "rating", label: "Rating", icon: "★" }
-                  ].map((q) => (
+                    { type: "file", label: "File Upload", icon: "⏩" },
+                    { type: "rating", label: "Rating", icon: "★" },
+                  ].map((option) => (
                     <button
-                      key={q.type}
-                      className="flex flex-col items-center p-4 rounded hover:bg-gray-100 transition"
+                      key={option.type}
                       onClick={() => {
-                        setNewQuestionType(q.type);
-                        setNewQuestion((prev: any) => ({
-                          ...prev,
-                          type: q.type
-                        }));
-                        setQuestionStep(2);
+                        dispatch(setNewQuestionType(option.type));
+                        dispatch(setQuestionStep(2));
                       }}
+                      className="flex flex-col items-center p-4 rounded hover:bg-gray-100 transition"
                     >
-                      <span className="text-2xl mb-2">{q.icon}</span>
-                      <span className="text-sm">{q.label}</span>
+                      <span className="text-2xl mb-2">{option.icon}</span>
+                      <span className="text-sm text-center">{option.label}</span>
                     </button>
                   ))}
                 </div>
                 <div className="flex justify-end">
                   <button
-                    className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200"
-                    onClick={() => setShowQuestionModal(false)}
+                    onClick={() => dispatch(setShowQuestionModal(false))}
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
                   >
                     Cancel
                   </button>
                 </div>
               </>
-            )}
-            {questionStep === 2 && (
+            ) : (
               <>
-                {/* Question Config UI */}
-                <div className="mb-4">
-                  <input
-                    className="w-full border rounded px-3 py-2 mb-2"
-                    placeholder="Write text here"
-                    value={newQuestion.label}
-                    onChange={(e) =>
-                      setNewQuestion((prev: any) => ({
-                        ...prev,
-                        label: e.target.value
-                      }))
-                    }
-                  />
-                  {(newQuestionType === "radio" ||
-                    newQuestionType === "checkbox") && (
-                    <div>
-                      {newQuestion.options.map((opt: string, idx: number) => (
-                        <div key={idx} className="flex items-center mb-1">
+                <h2 className="text-xl font-bold mb-4">Add New Question</h2>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none">Label</label>
+                    <input
+                      type="text"
+                      value={newQuestion.label}
+                      onChange={(e) =>
+                        dispatch(updateNewQuestion({ label: e.target.value }))
+                      }
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      placeholder="Enter question label"
+                    />
+                  </div>
+                  {(newQuestion.type === "radio" || newQuestion.type === "checkbox") && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none">Options</label>
+                      {newQuestion.options?.map((option, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
                           <input
-                            type={newQuestionType}
-                            className="mr-2"
-                            disabled
-                          />
-                          <input
-                            className="border rounded px-2 py-1 flex-1"
+                            type="text"
+                            value={option}
+                            onChange={(e) =>
+                              dispatch(
+                                updateNewQuestionOption({
+                                  index: idx,
+                                  value: e.target.value,
+                                })
+                              )
+                            }
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             placeholder={`Option ${idx + 1}`}
-                            value={opt}
-                            onChange={(e) => {
-                              const opts = [...newQuestion.options];
-                              opts[idx] = e.target.value;
-                              setNewQuestion((prev: any) => ({
-                                ...prev,
-                                options: opts
-                              }));
-                            }}
                           />
-                          <button
-                            className="ml-2 text-red-500"
-                            onClick={() => {
-                              setNewQuestion((prev: any) => ({
-                                ...prev,
-                                options: prev.options.filter(
-                                  (_: any, i: number) => i !== idx
-                                )
-                              }));
-                            }}
-                            disabled={newQuestion.options.length <= 1}
-                          >
-                            🗑
-                          </button>
+                          {newQuestion.options && newQuestion.options.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => dispatch(removeNewQuestionOption(idx))}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <svg
+                                width="18"
+                                height="18"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                              >
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       ))}
                       <button
-                        className="text-blue-600 text-sm mt-1"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setNewQuestion((prev: any) => ({
-                            ...prev,
-                            options: [...prev.options, ""]
-                          }));
-                        }}
+                        type="button"
+                        onClick={() => dispatch(addNewQuestionOption())}
+                        className="text-primary hover:underline text-sm"
                       >
-                        + Add Option
+                        Add Option
                       </button>
                     </div>
                   )}
-                  <div className="flex items-center mt-2">
+                  <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
-                      className="mr-2"
                       checked={newQuestion.required}
                       onChange={(e) =>
-                        setNewQuestion((prev: any) => ({
-                          ...prev,
-                          required: e.target.checked
-                        }))
+                        dispatch(updateNewQuestion({ required: e.target.checked }))
                       }
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
-                    <span>Required</span>
+                    <label className="text-sm font-medium leading-none">Required</label>
                   </div>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between mt-6">
                   <button
-                    className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200"
-                    onClick={() => setQuestionStep(1)}
+                    onClick={() => dispatch(setQuestionStep(1))}
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
                   >
                     Back
                   </button>
-                  <div>
+                  <div className="flex space-x-4">
                     <button
-                      className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 mr-2"
-                      onClick={() => setShowQuestionModal(false)}
+                      onClick={() => dispatch(setShowQuestionModal(false))}
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
                     >
                       Cancel
                     </button>
                     <button
-                      className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
                       onClick={() => {
-                        setFields([
-                          ...fields,
-                          { ...newQuestion, id: Date.now() }
-                        ]);
-                        setShowQuestionModal(false);
+                        dispatch(addField(newQuestion));
+                        dispatch(setShowQuestionModal(false));
+                        dispatch(
+                          updateNewQuestion({
+                            id: 0,
+                            label: "",
+                            type: "",
+                            required: false,
+                            options: [""],
+                          })
+                        );
+                        dispatch(setQuestionStep(1));
                       }}
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                      disabled={!newQuestion.label || !newQuestion.type}
                     >
-                      Save Question
+                      Add Question
                     </button>
                   </div>
                 </div>

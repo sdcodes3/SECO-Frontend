@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axiosInstance from './src/utils/axios';
-import API_CONSTANTS from './src/utils/apiConstants';
+import axiosInstance from '../utils/axios';
+import API_CONSTANTS from '../utils/apiConstants';
 
 // Define the Investor type based on the schema
 interface Investor {

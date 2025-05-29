@@ -2,8 +2,8 @@ import Header from "../components/Header";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../../store';
-import { fetchEvents, setFilters, clearMessages } from '../../EventSlice'
+import { RootState, AppDispatch } from '../storage/store';
+import { fetchEvents, setFilters, clearMessages } from '../slices/EventSlice'
 
 const EventDashboard = () => {
   const dispatch = useDispatch<AppDispatch>();

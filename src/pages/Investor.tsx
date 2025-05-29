@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../../store';
-import { fetchInvestors, updateInvestor, clearMessages, createInvestor, deleteInvestor, fetchInvestorById } from '../../InvestorSlice'
+import { RootState, AppDispatch } from '../storage/store';
+import { fetchInvestors, updateInvestor, clearMessages, createInvestor, deleteInvestor, fetchInvestorById } from '../slices/InvestorSlice'
 
 // Define the Investor interface (consider moving to a shared types file)
 interface Investor {
