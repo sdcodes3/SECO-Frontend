@@ -76,7 +76,7 @@ const Investor = () => {
     image: null,
   });
 
-  // State for View Investor Modal
+  // state for View Investor Modal
   const [showViewModal, setShowViewModal] = useState(false);
 
   // Fetch all investors on component mount
@@ -84,7 +84,6 @@ const Investor = () => {
     dispatch(fetchInvestors());
   }, [dispatch]);
 
-  // Clear messages after 5 seconds
   useEffect(() => {
     if (error || success) {
       const timer = setTimeout(() => {
@@ -118,7 +117,6 @@ const Investor = () => {
     e.preventDefault();
     
     try {
-      // Parse JSON strings for sectors and expertise
       const parsedSectors = JSON.parse(addFormData.sectors);
       const parsedExpertise = JSON.parse(addFormData.expertise);
 
@@ -138,7 +136,6 @@ const Investor = () => {
         image: addFormData.image,
       };
 
-      // Optimistic update happens in the slice, so we just dispatch
       const result = await dispatch(createInvestor(investorData));
       
       if (createInvestor.fulfilled.match(result)) {
@@ -210,7 +207,6 @@ const Investor = () => {
     if (!editInvestorId) return;
 
     try {
-      // Parse JSON strings for sectors and expertise
       const parsedSectors = JSON.parse(editFormData.sectors);
       const parsedExpertise = JSON.parse(editFormData.expertise);
 
@@ -229,7 +225,6 @@ const Investor = () => {
         image: editFormData.image || undefined,
       };
 
-      // Optimistic update happens in the slice, so we just dispatch
       const result = await dispatch(updateInvestor({ id: editInvestorId, updatedData }));
       
       if (updateInvestor.fulfilled.match(result)) {
@@ -243,17 +238,14 @@ const Investor = () => {
     }
   };
 
-  // Handle View Investor
   const openViewModal = async (id: string) => {
     await dispatch(fetchInvestorById(id));
     setShowViewModal(true);
   };
 
-  // Handle Delete Investor
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this investor?")) return;
 
-    // Optimistic update happens in the slice, so we just dispatch
     await dispatch(deleteInvestor(id));
   };
 
@@ -275,7 +267,6 @@ const Investor = () => {
         </button>
       </div>
 
-      {/* Investors Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white border rounded-lg">
           <thead className="bg-gray-50">
@@ -329,7 +320,6 @@ const Investor = () => {
         </table>
       </div>
 
-      {/* Loading Indicator */}
       {loading && <div className="text-center mt-4">Loading...</div>}
 
       {/* No Investors Found */}
@@ -749,14 +739,12 @@ const Investor = () => {
         </div>
       )}
 
-      {/* Error Alert */}
       {error && (
         <div className="fixed bottom-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
           {error}
         </div>
       )}
 
-      {/* Success Alert */}
       {success && (
         <div className="fixed bottom-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
           {success}

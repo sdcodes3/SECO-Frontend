@@ -22,11 +22,10 @@ const EventDashboard = () => {
     const userData = localStorage.getItem("user");
     setIsLoggedIn(!!userData);
 
-    // Fetch all events on mount
+    // fetching all events on mount
     dispatch(fetchEvents());
   }, [dispatch]);
 
-  // Clear messages after 5 seconds
   useEffect(() => {
     if (error || success) {
       const timer = setTimeout(() => {
@@ -250,13 +249,11 @@ const EventDashboard = () => {
             ))}
           </div>
         )}
-        {/* Error Alert */}
         {error && (
           <div className="fixed bottom-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             {error}
           </div>
         )}
-        {/* Success Alert */}
         {success && (
           <div className="fixed bottom-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
             {success}

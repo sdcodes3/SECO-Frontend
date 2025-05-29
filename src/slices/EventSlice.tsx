@@ -36,7 +36,7 @@ interface Event {
 
 // Define the Form Field type
 interface FormField {
-  id: number; // Changed to number to fix Error 3
+  id: number;
   label: string;
   type: string;
   required: boolean;
@@ -58,7 +58,7 @@ interface EventCreationState {
     judges_emails: string;
     is_virtual: boolean;
     stages: Stage[];
-    errors?: Record<string, string>; // Added to fix Error 1
+    errors?: Record<string, string>;
   };
   stages: Stage[];
   fields: FormField[];
@@ -107,7 +107,7 @@ const initialEventCreationState: EventCreationState = {
     judges_emails: '',
     is_virtual: false,
     stages: [],
-    errors: {}, // Initialize errors field
+    errors: {},
   },
   stages: [
     {
@@ -127,7 +127,7 @@ const initialEventCreationState: EventCreationState = {
   showQuestionModal: false,
   questionStep: 1,
   newQuestion: {
-    id: 0, // Initialize as number
+    id: 0, 
     label: '',
     type: '',
     required: false,
@@ -157,7 +157,7 @@ const initialState: EventState = {
   creation: initialEventCreationState,
 };
 
-// Async thunk to fetch all events
+//fetch all events
 export const fetchEvents = createAsyncThunk(
   'event/fetchEvents',
   async (_, { rejectWithValue }) => {
@@ -172,7 +172,7 @@ export const fetchEvents = createAsyncThunk(
   }
 );
 
-// Async thunk to fetch an event by ID
+//fetch an event by ID
 export const fetchEventById = createAsyncThunk(
   'event/fetchEventById',
   async (id: string, { rejectWithValue }) => {
@@ -187,7 +187,7 @@ export const fetchEventById = createAsyncThunk(
   }
 );
 
-// Async thunk to create an event
+//create an event
 export const createEvent = createAsyncThunk(
   'event/createEvent',
   async (
@@ -250,7 +250,7 @@ export const createEvent = createAsyncThunk(
   }
 );
 
-// Async thunk to save form fields
+// save form fields
 export const saveFormFields = createAsyncThunk(
   'event/saveFormFields',
   async ({ eventId, fields }: { eventId: string; fields: FormField[] }, { rejectWithValue }) => {
@@ -281,7 +281,7 @@ export const saveFormFields = createAsyncThunk(
   }
 );
 
-// Create the event slice
+// creating the event slice
 const eventSlice = createSlice({
   name: 'event',
   initialState,
@@ -350,7 +350,6 @@ const eventSlice = createSlice({
       Object.assign(state, initialState);
     },
 
-    // Set error for creation state (Added to fix Error 2)
     setError: (state, action: PayloadAction<string | null>) => {
       state.creation.error = action.payload;
     },
@@ -442,7 +441,7 @@ const eventSlice = createSlice({
     addField: (state, action: PayloadAction<FormField>) => {
       state.creation.fields.push({
         ...action.payload,
-        id: state.creation.fields.length + 1, // Ensure id is a number (fix for Error 3)
+        id: state.creation.fields.length + 1, 
       });
     },
 
@@ -463,7 +462,7 @@ const eventSlice = createSlice({
       const fieldToDuplicate = state.creation.fields[index];
       state.creation.fields.splice(index + 1, 0, {
         ...fieldToDuplicate,
-        id: state.creation.fields.length + 1, // Ensure new id is a number
+        id: state.creation.fields.length + 1, 
       });
     },
 
@@ -530,7 +529,6 @@ const eventSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      // Fetch event by ID
       .addCase(fetchEventById.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -579,13 +577,12 @@ const eventSlice = createSlice({
   },
 });
 
-// Export actions
 export const {
   setFilters,
   clearMessages,
   clearSelectedEvent,
   resetEventState,
-  setError, // Added to fix Error 2
+  setError,
   setFormData,
   setCreatedBy,
   setStep,
@@ -609,5 +606,5 @@ export const {
   resetCreationState,
 } = eventSlice.actions;
 
-// Export reducer
+
 export default eventSlice.reducer;

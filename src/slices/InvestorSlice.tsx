@@ -26,7 +26,7 @@ interface InvestorState {
   loading: boolean;
   error: string | null;
   success: string | null;
-  // Store previous state for reverting optimistic updates
+  // storing previous state for reverting optimistic updates if the operation fails then
   previousInvestors: Investor[];
   previousSelectedInvestor: Investor | null;
 }
@@ -42,7 +42,7 @@ const initialState: InvestorState = {
   previousSelectedInvestor: null,
 };
 
-// Async thunk to fetch all investors
+// fetched all investors
 export const fetchInvestors = createAsyncThunk(
   'investor/fetchInvestors',
   async (_, { rejectWithValue }) => {
@@ -71,7 +71,7 @@ export const fetchInvestorById = createAsyncThunk(
   }
 );
 
-// Async thunk to create a new investor
+// creates a new investor
 export const createInvestor = createAsyncThunk(
   'investor/createInvestor',
   async (
@@ -94,8 +94,7 @@ export const createInvestor = createAsyncThunk(
   ) => {
     try {
       const formDataToSend = new FormData();
-      
-      // Append all fields to FormData
+
       formDataToSend.append('name', investorData.name);
       formDataToSend.append('email', investorData.email);
       formDataToSend.append('password', investorData.password);
@@ -108,7 +107,7 @@ export const createInvestor = createAsyncThunk(
       formDataToSend.append('expertise', JSON.stringify(investorData.expertise));
       formDataToSend.append('specialization', investorData.specialization);
       formDataToSend.append('experience', investorData.experience);
-      
+
       if (investorData.image) {
         formDataToSend.append('image', investorData.image);
       }
@@ -122,7 +121,7 @@ export const createInvestor = createAsyncThunk(
           },
         }
       );
-      
+
       return response.data.investor;
     } catch (err: any) {
       return rejectWithValue(
@@ -132,7 +131,7 @@ export const createInvestor = createAsyncThunk(
   }
 );
 
-// Async thunk to update an investor
+// update an investor
 export const updateInvestor = createAsyncThunk(
   'investor/updateInvestor',
   async (
@@ -160,7 +159,7 @@ export const updateInvestor = createAsyncThunk(
   ) => {
     try {
       const formDataToSend = new FormData();
-      
+
       // Append only provided fields to FormData
       Object.keys(updatedData).forEach((key) => {
         const value = updatedData[key as keyof typeof updatedData];
@@ -184,7 +183,7 @@ export const updateInvestor = createAsyncThunk(
           },
         }
       );
-      
+
       return response.data.investor;
     } catch (err: any) {
       return rejectWithValue(
@@ -194,7 +193,7 @@ export const updateInvestor = createAsyncThunk(
   }
 );
 
-// Async thunk to delete an investor
+// delete an investor
 export const deleteInvestor = createAsyncThunk(
   'investor/deleteInvestor',
   async (id: string, { rejectWithValue }) => {
@@ -209,7 +208,7 @@ export const deleteInvestor = createAsyncThunk(
   }
 );
 
-// Async thunk to search investors
+// search investors
 export const searchInvestors = createAsyncThunk(
   'investor/searchInvestors',
   async (
@@ -224,7 +223,7 @@ export const searchInvestors = createAsyncThunk(
   ) => {
     try {
       const params = new URLSearchParams();
-      
+
       if (searchParams.query) {
         params.append('query', searchParams.query);
       }
@@ -244,7 +243,7 @@ export const searchInvestors = createAsyncThunk(
       const response = await axiosInstance.get(
         `${API_CONSTANTS.GET_ALL_INVESTORS}?${params.toString()}`
       );
-      
+
       return response.data.investors || [];
     } catch (err: any) {
       return rejectWithValue(
@@ -254,7 +253,7 @@ export const searchInvestors = createAsyncThunk(
   }
 );
 
-// Create the investor slice
+// creating the investor slice
 const investorSlice = createSlice({
   name: 'investor',
   initialState,
@@ -264,17 +263,17 @@ const investorSlice = createSlice({
       state.error = null;
       state.success = null;
     },
-    
+
     // Clear selected investor
     clearSelectedInvestor: (state) => {
       state.selectedInvestor = null;
     },
-    
+
     // Set selected investor
     setSelectedInvestor: (state, action) => {
       state.selectedInvestor = action.payload;
     },
-    
+
     // Reset state
     resetInvestorState: (state) => {
       Object.assign(state, initialState);
@@ -282,7 +281,6 @@ const investorSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Fetch all investors
       .addCase(fetchInvestors.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -296,8 +294,7 @@ const investorSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      
-      // Fetch investor by ID
+
       .addCase(fetchInvestorById.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -311,13 +308,13 @@ const investorSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      
-      // Create investor with optimistic update
+
+      // create investor with optimistic update
       .addCase(createInvestor.pending, (state, action) => {
         state.loading = true;
         state.error = null;
         state.success = null;
-        // Optimistic update: Add a temporary investor to the list
+        // optimistic update adding a temporary investor to the list
         const tempInvestor: Investor = {
           id: `temp-${Date.now()}`, // Temporary ID
           name: action.meta.arg.name,
@@ -337,7 +334,7 @@ const investorSlice = createSlice({
       })
       .addCase(createInvestor.fulfilled, (state, action) => {
         state.loading = false;
-        // Replace the temporary investor with the actual one from the API
+        // replacing the temporary investor with the actual one from the API
         const tempIndex = state.investors.findIndex((inv) => inv.id.startsWith('temp-'));
         if (tempIndex !== -1) {
           state.investors[tempIndex] = action.payload;
@@ -352,7 +349,7 @@ const investorSlice = createSlice({
         state.error = action.payload as string;
         state.success = null;
       })
-      
+
       // Update investor with optimistic update
       .addCase(updateInvestor.pending, (state, action) => {
         state.loading = true;
@@ -421,7 +418,7 @@ const investorSlice = createSlice({
         state.previousInvestors = [];
         state.previousSelectedInvestor = null;
       })
-      
+
       // Delete investor with optimistic update
       .addCase(deleteInvestor.pending, (state, action) => {
         state.loading = true;
@@ -442,7 +439,7 @@ const investorSlice = createSlice({
         state.loading = false;
         state.success = 'Investor deleted successfully';
         state.error = null;
-        // Clear previous state
+
         state.previousInvestors = [];
         state.previousSelectedInvestor = null;
       })
@@ -455,12 +452,12 @@ const investorSlice = createSlice({
           : null;
         state.error = action.payload as string;
         state.success = null;
-        // Clear previous state
+
         state.previousInvestors = [];
         state.previousSelectedInvestor = null;
       })
-      
-      // Search investors
+
+
       .addCase(searchInvestors.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -477,7 +474,7 @@ const investorSlice = createSlice({
   },
 });
 
-// Export actions
+
 export const {
   clearMessages,
   clearSelectedInvestor,
@@ -485,12 +482,11 @@ export const {
   resetInvestorState,
 } = investorSlice.actions;
 
-// Export selectors
+
 export const selectInvestors = (state: { investor: InvestorState }) => state.investor.investors;
 export const selectSelectedInvestor = (state: { investor: InvestorState }) => state.investor.selectedInvestor;
 export const selectInvestorLoading = (state: { investor: InvestorState }) => state.investor.loading;
 export const selectInvestorError = (state: { investor: InvestorState }) => state.investor.error;
 export const selectInvestorSuccess = (state: { investor: InvestorState }) => state.investor.success;
 
-// Export reducer
 export default investorSlice.reducer;
