@@ -1,11 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit';
 import investorReducer from '../slices/InvestorSlice';
 import eventReducer from '../slices/EventSlice';
+import eventApplicationReducer from '../slices/EventApplicationSlice'; // Add the event application reducer
 
 export const store = configureStore({
   reducer: {
     investor: investorReducer,
-    event: eventReducer, // Add this reducer
+    event: eventReducer,
+    eventApplication: eventApplicationReducer,
   },
 });
 

@@ -80,7 +80,7 @@ interface EventCreationState {
 interface EventState {
   events: Event[];
   filteredEvents: Event[];
-  selectedEvent: Event | null;
+  eventsById: { [key: string]: Event }; // Map of events by ID
   loading: boolean;
   error: string | null;
   success: string | null;
@@ -145,7 +145,7 @@ const initialEventCreationState: EventCreationState = {
 const initialState: EventState = {
   events: [],
   filteredEvents: [],
-  selectedEvent: null,
+  eventsById: {}, // Initialize as an empty object
   loading: false,
   error: null,
   success: null,
@@ -340,11 +340,6 @@ const eventSlice = createSlice({
       state.creation.success = null;
     },
 
-    // Clear selected event
-    clearSelectedEvent: (state) => {
-      state.selectedEvent = null;
-    },
-
     // Reset state
     resetEventState: (state) => {
       Object.assign(state, initialState);
@@ -499,6 +494,11 @@ const eventSlice = createSlice({
         state.loading = false;
         state.events = action.payload;
         state.filteredEvents = action.payload;
+        // Store events in eventsById
+        state.eventsById = action.payload.reduce((acc: { [key: string]: Event }, event: Event) => {
+          acc[event.id] = event;
+          return acc;
+        }, {});
         state.error = null;
         const locations = [
           'All Locations',
@@ -535,7 +535,7 @@ const eventSlice = createSlice({
       })
       .addCase(fetchEventById.fulfilled, (state, action) => {
         state.loading = false;
-        state.selectedEvent = action.payload;
+        state.eventsById[action.payload.id] = action.payload;
         state.error = null;
       })
       .addCase(fetchEventById.rejected, (state, action) => {
@@ -580,7 +580,6 @@ const eventSlice = createSlice({
 export const {
   setFilters,
   clearMessages,
-  clearSelectedEvent,
   resetEventState,
   setError,
   setFormData,
@@ -606,5 +605,6 @@ export const {
   resetCreationState,
 } = eventSlice.actions;
 
+export const selectEventsById = (state: { event: EventState }) => state.event.eventsById;
 
 export default eventSlice.reducer;
