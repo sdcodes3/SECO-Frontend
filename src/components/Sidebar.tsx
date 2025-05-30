@@ -1,5 +1,5 @@
-import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Logo from "@/assets/seco logo.png";
 
 interface SidebarProps {
@@ -8,6 +8,32 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const user = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
+      if (!user || !token) {
+        navigate('/auth');
+      }
+    };
+    checkAuth();
+
+    const handleStorageChange = (e: StorageEvent) => {
+      // @ts-ignore
+      if (e.key !== "user" || e.key !== "token") {
+        navigate('/auth');
+      } 
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
+
 
   const menuItems = [
     {
