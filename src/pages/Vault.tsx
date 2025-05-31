@@ -12,6 +12,7 @@ interface Project {
   linkedin?: string;
   twitter?: string;
   store_link?: string;
+  file_ids?: string;
 }
 
 type ProjectData = Omit<Project, "sub_projects">;
@@ -85,12 +86,15 @@ const Vault = () => {
     twitter: "",
     store_link: ""
   });
+  const [files, setFiles] = useState<any[]>([{}]);
   const [loading, setLoading] = useState(false);
 
   const getProjects = async () => {
     try {
       const response = await axiosInstance.get(API_CONSTANTS.GET_ROOT_PROJECTS);
       setProject(response.data.data[0]);
+      const files = JSON.parse(response.data.data[0].file_ids);
+      setFiles(files);
     } catch (error) {
       console.error("Error fetching projects:", error);
     }
@@ -106,12 +110,40 @@ const Vault = () => {
         const newProject = response.data.data[0];
         setProject(newProject);
         setPathHistory((prev) => [...prev, newProject]);
+        const files = JSON.parse(response.data.data[0].file_ids);
+        setFiles(files);
       }
     } catch (error) {
       console.error("Error fetching project details:", error);
     }
   };
-
+  const handleBannerUpload = async () => {
+    try {
+      const bannerInput = document.getElementById(
+        "event-banner-input"
+      ) as HTMLInputElement;
+      const formDataToSend = new FormData();
+      if (bannerInput?.files?.[0]) {
+        formDataToSend.append("banner", bannerInput.files[0]);
+      }
+      const response = await axiosInstance.post(
+        API_CONSTANTS.FILE_UPLOAD_PROJECT(project?.id || "0"),
+        formDataToSend,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data"
+          }
+        }
+      );
+      if (response.data && response.data) {
+        alert("File uploaded successfully!");
+      } else {
+        alert("Error while file uploading");
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
   const handleProjectClick = async (projectId: string) => {
     await getProjectDetails(projectId);
   };
@@ -279,7 +311,13 @@ const Vault = () => {
                 </svg>{" "}
                 New Project
               </button>
-              <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [_svg]:pointer-events-none [_svg]:size-4 [_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+              <button
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [_svg]:pointer-events-none [_svg]:size-4 [_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  document.getElementById("event-banner-input")?.click();
+                }}
+              >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -294,6 +332,13 @@ const Vault = () => {
                     d="M12 6v6m0 0v6m0-6h6m-6 0H6"
                   ></path>
                 </svg>{" "}
+                <input
+                  id="event-banner-input"
+                  type="file"
+                  accept="image/png, image/jpeg"
+                  className="hidden"
+                  onChange={handleBannerUpload}
+                />
                 Upload File
               </button>
             </div>
@@ -507,33 +552,68 @@ const Vault = () => {
                       </tr>
                     </thead>
                     <tbody className="[_tr:last-child]:border-0">
-                      <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                        <td
-                          className="p-4 align-middle [:has([role=checkbox])]:pr-0 text-center py-8"
-                          colSpan={6}
-                        >
-                          <div className="text-muted-foreground">
-                            No files found
-                          </div>
-                          <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [_svg]:pointer-events-none [_svg]:size-4 [_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 mt-4">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                              className="mr-2 h-4 w-4"
+                      {files?.length == 0 && (
+                        <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                          <td
+                            className="p-4 align-middle [:has([role=checkbox])]:pr-0 text-center py-8"
+                            colSpan={6}
+                          >
+                            <div className="text-muted-foreground">
+                              No files found
+                            </div>
+                            <button
+                              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [_svg]:pointer-events-none [_svg]:size-4 [_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 mt-4"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                document
+                                  .getElementById("event-banner-input")
+                                  ?.click();
+                              }}
                             >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                              ></path>
-                            </svg>{" "}
-                            Upload Files
-                          </button>
-                        </td>
-                      </tr>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                className="mr-2 h-4 w-4"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                ></path>
+                              </svg>{" "}
+                              Upload Files
+                            </button>
+                          </td>
+                        </tr>
+                      )}
+                      {files?.length > 0 &&
+                        files?.map((file) => {
+                          return (
+                            <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                              <td className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0 w-[400px]">
+                                {file.originalname}
+                              </td>
+                              <td className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0">
+                                {file.mimetype}
+                              </td>
+                              <td className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0">
+                                {file.size}
+                              </td>
+                              <td className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0">
+                                Date Added
+                              </td>
+                              <td className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0">
+                                Tags
+                              </td>
+                              <td className="h-12 px-4 align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0 text-right">
+                                Actions
+                              </td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   </table>
                 </div>

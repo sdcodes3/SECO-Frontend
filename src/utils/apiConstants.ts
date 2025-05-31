@@ -31,6 +31,7 @@ class APIConstants {
   CREATE_PROJECT = this.PROJECTS + "/";
   EDIT_PROJECT = (id: string) => `${this.PROJECTS}/${id}`;
   GET_PROJECT_DETAILS = (id: string) => `${this.PROJECTS}/detail/${id}`;
+  FILE_UPLOAD_PROJECT = (id: string) => `${this.PROJECTS}/uploadfile/${id}`;
 
   //Form Endpoints
   GET_FORM_BY_EVENT = (id: string) => `${this.FORM}/${id}`;
