@@ -84,7 +84,7 @@ const Vault = () => {
     website: "",
     linkedin: "",
     twitter: "",
-    store_link: ""
+    store_link: "",
   });
   const [files, setFiles] = useState<any[]>([{}]);
   const [loading, setLoading] = useState(false);
@@ -92,8 +92,9 @@ const Vault = () => {
   const getProjects = async () => {
     try {
       const response = await axiosInstance.get(API_CONSTANTS.GET_ROOT_PROJECTS);
-      setProject(response.data.data[0]);
-      const files = JSON.parse(response.data.data[0].file_ids);
+      const data = response.data;
+      setProject(data.data[0]);
+      const files = JSON.parse(data.data[0].file_ids);
       setFiles(files);
     } catch (error) {
       console.error("Error fetching projects:", error);
@@ -109,7 +110,12 @@ const Vault = () => {
       if (response.data) {
         const newProject = response.data.data[0];
         setProject(newProject);
-        setPathHistory((prev) => [...prev, newProject]);
+        setPathHistory((prev) => {
+          if (prev.length === 0 || prev[prev.length - 1].id !== newProject.id) {
+            return [...prev, newProject];
+          }
+          return prev;
+        });
         const files = JSON.parse(response.data.data[0].file_ids);
         setFiles(files);
       }
@@ -131,15 +137,16 @@ const Vault = () => {
         formDataToSend,
         {
           headers: {
-            "Content-Type": "multipart/form-data"
-          }
+            "Content-Type": "multipart/form-data",
+          },
         }
       );
-      if (response.data && response.data) {
+      if (response.data) {
         alert("File uploaded successfully!");
       } else {
         alert("Error while file uploading");
       }
+      getProjectDetails(project?.id || "0");
     } catch (error) {
       throw error;
     }
@@ -169,7 +176,7 @@ const Vault = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -179,7 +186,7 @@ const Vault = () => {
     try {
       const response = await axiosInstance.post(API_CONSTANTS.CREATE_PROJECT, {
         ...formData,
-        parent_id: project?.id || null
+        parent_id: project?.id || null,
       });
 
       if (response.data) {
@@ -189,7 +196,7 @@ const Vault = () => {
           website: "",
           linkedin: "",
           twitter: "",
-          store_link: ""
+          store_link: "",
         });
         // Refresh projects list
         getProjects();
@@ -214,7 +221,7 @@ const Vault = () => {
         website: response.data.data.website || "",
         linkedin: response.data.data.linkedin || "",
         twitter: response.data.data.twitter || "",
-        store_link: response.data.data.store_link || ""
+        store_link: response.data.data.store_link || "",
       });
       setIsEditModalOpen(true);
     }
@@ -230,7 +237,7 @@ const Vault = () => {
         API_CONSTANTS.EDIT_PROJECT(selectedProject.id),
         {
           ...formData,
-          parent_id: project?.id || null
+          parent_id: project?.id || null,
         }
       );
 
@@ -241,7 +248,7 @@ const Vault = () => {
           website: "",
           linkedin: "",
           twitter: "",
-          store_link: ""
+          store_link: "",
         });
         // Refresh projects list
         getProjects();
