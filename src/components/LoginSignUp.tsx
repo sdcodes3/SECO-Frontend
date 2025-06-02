@@ -1,21 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Logo from "../assets/seco logo.png";
-import {
-  GoogleLogin,
-  GoogleOAuthProvider,
-  CredentialResponse
-} from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
-import { AuthResponse } from "../types/auth";
-// import { LinkedIn } from "@react-oauth/linkedin";
-import { createClient } from "@supabase/supabase-js";
 import axiosInstance from "../utils/axios";
 import API_CONSTANTS from "../utils/apiConstants";
 import useUser from "../hooks/useUser";
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL!,
-  import.meta.env.VITE_SUPABASE_ANON_KEY!
-);
 
 const LoginSignUp = () => {
   const navigate = useNavigate();
@@ -29,19 +17,6 @@ const LoginSignUp = () => {
   });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const handleOAuthLogin = async (provider: "google" | "linkedin_oidc") => {
-    try {
-      await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: import.meta.env.VITE_BASE_URL + "/dashboard"
-        }
-      });
-    } catch (error) {
-      console.error("OAuth login error:", error);
-      alert("Login failed");
-    }
-  };
   const handleTabChange = (tab: "login" | "signup") => {
     setActiveTab(tab);
   };
@@ -55,6 +30,26 @@ const LoginSignUp = () => {
       [name]: value
     }));
   };
+
+  const handleOAuthLoginTest = async (provider: "google" | "linkedin") => {
+    try {
+      const endpointMap: Record<"google" | "linkedin", keyof typeof API_CONSTANTS> = {
+        google: "GOOGLE_OAUTH", 
+        linkedin: "LINKEDIN_OAUTH" 
+      };
+
+      const endpoint = endpointMap[provider];
+      const apiEndpoint = typeof API_CONSTANTS[endpoint] === "function" 
+        ? API_CONSTANTS[endpoint]("") 
+        : API_CONSTANTS[endpoint];
+
+      console.log('linkedin api endpoint: ', apiEndpoint)
+      window.location.href = apiEndpoint
+    } catch (error: any) {
+      console.error("OAuth authentication error:", error);
+      alert(error.message || "OAuth authentication failed. Please try again.");
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,87 +92,17 @@ const LoginSignUp = () => {
     setIsDropdownOpen(false);
   };
 
-  const handleGoogleSuccess = async (
-    credentialResponse: CredentialResponse
-  ) => {
-    // try {
-    //   const response = await axiosInstance.post(API_CONSTANTS.GOOGLE_LOGIN, {
-    //     credential: credentialResponse.credential
-    //   });
-    //   if (response.status === 200) {
-    //     const data = response.data;
-    //     localStorage.setItem("token", data.token);
-    //     localStorage.setItem("user", JSON.stringify(data.user));
-    //     navigate("/dashboard");
-    //   }
-    // } catch (error: any) {
-    //   console.error("Error during Google authentication:", error);
-    //   alert(error.message || "Authentication failed. Please try again.");
-    // }
-    try {
-      const response = await fetch("http://localhost:3001/api/auth/google", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          credential: credentialResponse.credential
-        })
-      });
-      if (!response.ok) {
-        throw new Error("Authentication failed");
-      }
-      const data: AuthResponse = await response.json();
-      // Store the token in localStorage or your preferred state management
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      // Redirect to dashboard
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    const user = params.get("user");
+
+    if (token && user) {
+      localStorage.setItem("token", token);
+      updateUser(user); // Assumes this sets state/context
       navigate("/dashboard");
-    } catch (error) {
-      console.error("Error during Google authentication:", error);
-      alert("Authentication failed. Please try again.");
     }
-  };
-
-  const handleGoogleError = () => {
-    console.log("Login Failed");
-    alert("Login Failed");
-  };
-
-  // const handleLinkedInSuccess = async (response: LinkedInResponse) => {
-  //   try {
-  //     const result = await fetch("http://localhost:3000/api/auth/linkedin", {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json"
-  //       },
-  //       body: JSON.stringify({
-  //         code: response.code
-  //       })
-  //     });
-
-  //     if (!result.ok) {
-  //       throw new Error("LinkedIn authentication failed");
-  //     }
-
-  //     const data: AuthResponse = await result.json();
-
-  //     // Store the token and user data
-  //     localStorage.setItem("token", data.token);
-  //     localStorage.setItem("user", JSON.stringify(data.user));
-
-  //     // Redirect to dashboard
-  //     navigate("/dashboard");
-  //   } catch (error) {
-  //     console.error("Error during LinkedIn authentication:", error);
-  //     alert("LinkedIn authentication failed. Please try again.");
-  //   }
-  // };
-
-  // const handleLinkedInError = () => {
-  //   console.log("LinkedIn Login Failed");
-  //   alert("LinkedIn Login Failed");
-  // };
+  }, []);
 
   return (
     <div className="container mx-auto py-24 px-4 flex items-center justify-center min-h-screen">
@@ -302,41 +227,10 @@ const LoginSignUp = () => {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <GoogleOAuthProvider
-                    clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
-                  >
-                    <GoogleLogin
-                      onSuccess={handleGoogleSuccess}
-                      onError={handleGoogleError}
-                      useOneTap
-                    />
-                  </GoogleOAuthProvider>
-                  {/* <LinkedIn
-                    clientId={import.meta.env.VITE_LINKEDIN_CLIENT_ID}
-                    onSuccess={handleLinkedInSuccess}
-                    onError={handleLinkedInError}
-                    redirectUri="http://localhost:5173"
-                  >
-                    {({ signIn }: { signIn: () => void }) => (
-                      <button
-                        onClick={signIn}
-                        className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-[#0077B5] text-white hover:bg-[#0077B5]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                        >
-                          <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                        </svg>
-                        Sign in with LinkedIn
-                      </button>
-                    )}
-                  </LinkedIn> */}
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleOAuthLogin("google")}
+                  onClick={() => handleOAuthLoginTest("google")}
                   className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-gray-100 text-black"
                 >
                   <img
@@ -349,7 +243,7 @@ const LoginSignUp = () => {
 
                 <button
                   type="button"
-                  onClick={() => handleOAuthLogin("linkedin_oidc")}
+                  onClick={() => handleOAuthLoginTest("linkedin")}
                   className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-[#0077B5] text-white hover:bg-[#0077B5]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <svg
@@ -383,39 +277,6 @@ const LoginSignUp = () => {
                   Test Accounts (for demo)
                 </h3>
               </div>
-
-              {/* <div className="grid grid-cols-2 gap-2 mb-4">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 justify-start text-xs"
-                >
-                  Login as Startup
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 justify-start text-xs"
-                >
-                  Login as Individual Founder
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 justify-start text-xs"
-                >
-                  Login as Investor
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 justify-start text-xs"
-                >
-                  Login as Incubator
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 justify-start text-xs"
-                >
-                  Login as Accelerator
-                </button>
-              </div> */}
 
               <div className="text-xs text-muted-foreground mb-2">
                 <p>

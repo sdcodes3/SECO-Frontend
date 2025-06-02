@@ -23,6 +23,7 @@ import SuperAdminEvents from "./pages/SuperAdminEvents";
 import SuperAdminSettings from "./pages/SuperAdminSettings";
 import Judge from "./pages/Judge";
 import Professionals from "./pages/Professionals";
+import { OAuthCallback } from "./utils/OAuthCallback";
 
 const App = () => {
   const { isLoggedIn } = useUser();
@@ -32,6 +33,7 @@ const App = () => {
       <Routes>
         <Route path="/auth" element={<LoginSignUp />} />
         <Route path="/" element={<Home />} />
+        <Route path="/oauth-callback" element={<OAuthCallback />} />
         <Route
           path="/events"
           element={

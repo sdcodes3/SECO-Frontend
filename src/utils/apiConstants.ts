@@ -13,7 +13,10 @@ class APIConstants {
 
   // Auth Endpoints
   LOGIN = this.AUTH + "/login";
-  GOOGLE_LOGIN = this.AUTH + "/google";
+  GOOGLE_OAUTH = this.AUTH + "/google";
+  LINKEDIN_OAUTH = this.AUTH + "/linkedin"
+  GOOGLE_TOKEN = this.AUTH + "/google/token";
+  LINKEDIN_TOKEN = this.AUTH + "/linkedin/token";
   FORGOT_PASSWORD = this.AUTH + "/forgot-password";
   RESET_PASSWORD = this.AUTH + "/reset-password";
   SIGNUP = this.AUTH + "/signup";
