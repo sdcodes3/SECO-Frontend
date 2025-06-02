@@ -20,6 +20,8 @@ import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import SuperAdminUsers from "./pages/SuperAdminUsers";
 import SuperAdminEvents from "./pages/SuperAdminEvents";
 import SuperAdminSettings from "./pages/SuperAdminSettings";
+import Judge from "./pages/Judge";
+
 const App = () => {
   const { isLoggedIn } = useUser();
   return (
@@ -56,6 +58,14 @@ const App = () => {
           element={
             <Layout>
               <Dashboard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/judge"
+          element={
+            <Layout>
+              <Judge />
             </Layout>
           }
         />
