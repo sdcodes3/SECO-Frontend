@@ -22,23 +22,26 @@ const Header = () => {
 
     window.addEventListener("scroll", handleScroll);
 
-    // Check if user is logged in from localStorage
     const checkAuth = () => {
       const user = localStorage.getItem("user");
-      setIsLoggedIn(!!user);
+      const token = localStorage.getItem("token");
+      if (!user || !token) {
+        navigate('/auth');
+      }
     };
     checkAuth();
 
-    // Listen for storage changes
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "user") {
+      // @ts-ignore
+      if (e.key !== "user" || e.key !== "token") {
         setIsLoggedIn(!!e.newValue);
+      } else {
+        navigate('/auth')
       }
     };
 
     window.addEventListener("storage", handleStorageChange);
 
-    // Clean up the event listener when component unmounts
     return () => {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("storage", handleStorageChange);

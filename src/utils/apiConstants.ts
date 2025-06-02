@@ -7,7 +7,9 @@ class APIConstants {
   EVENTS = this.BASE_URL + "/events";
   FORM = this.BASE_URL + "/form";
   PROJECTS = this.BASE_URL + "/projects";
+  INVESTORS = this.BASE_URL + "/investors";
   TEAM = this.BASE_URL + "/team";
+  EVENT_APPLICATIONS = this.BASE_URL + "/event-applications";
 
   // Auth Endpoints
   LOGIN = this.AUTH + "/login";
@@ -39,10 +41,25 @@ class APIConstants {
   DELETE_FORM_BY_EVENT = (id: string) => `${this.FORM}/${id}`;
   REPLACE_FORM_BY_EVENT = (id: string) => `${this.FORM}/replace/${id}`;
 
+  // Investor Endpoints
+  GET_ALL_INVESTORS = this.INVESTORS + "/";
+  GET_INVESTOR_BY_ID = (id: string) => `${this.INVESTORS}/${id}`;
+  CREATE_INVESTOR = this.INVESTORS + "/";
+  EDIT_INVESTOR = (id: string) => `${this.INVESTORS}/${id}`;
+  DELETE_INVESTOR = (id: string) => `${this.INVESTORS}/${id}`;
   //Team Endpoints
   CREATE_TEAM = this.TEAM + "/create";
   GET_TEAMS = this.TEAM + "/";
   INVITE_TEAM = (teamId: string) => `${this.TEAM}/${teamId}/invite`;
+
+  // Event Application Endpoints
+  CREATE_EVENT_APPLICATION = this.EVENT_APPLICATIONS + "/";
+  GET_ALL_EVENT_APPLICATIONS = this.EVENT_APPLICATIONS + "/all";
+  GET_EVENT_APPLICATIONS_BY_USER = this.EVENT_APPLICATIONS + "/user/user-application";
+  GET_EVENT_APPLICATIONS_BY_EVENT = (eventId: string) => `${this.EVENT_APPLICATIONS}/event/${eventId}`;
+  GET_EVENT_APPLICATION_BY_ID = (id: string) => `${this.EVENT_APPLICATIONS}/${id}`;
+  EDIT_EVENT_APPLICATION = (id: string) => `${this.EVENT_APPLICATIONS}/${id}`;
+  DELETE_EVENT_APPLICATION = (id: string) => `${this.EVENT_APPLICATIONS}/${id}`;
 }
 
 const API_CONSTANTS = new APIConstants();

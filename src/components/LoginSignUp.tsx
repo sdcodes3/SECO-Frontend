@@ -34,10 +34,7 @@ const LoginSignUp = () => {
       await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo:
-            import.meta.env.CURRENT_ENVIRONMENT == "DEVELOPMENT"
-              ? import.meta.env.VITE_FRONTEND_DEVELOPMENT_URI
-              : import.meta.env.VITE_FRONTEND_PRODUCTION_URI + "/dashboard"
+          redirectTo: import.meta.env.VITE_BASE_URL + "/dashboard"
         }
       });
     } catch (error) {
@@ -118,7 +115,7 @@ const LoginSignUp = () => {
     //   alert(error.message || "Authentication failed. Please try again.");
     // }
     try {
-      const response = await fetch("http://localhost:3000/api/auth/google", {
+      const response = await fetch("http://localhost:3001/api/auth/google", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
