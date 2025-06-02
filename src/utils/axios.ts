@@ -4,7 +4,7 @@ import API_CONSTANTS from "./apiConstants";
 const createAxiosInstance = () => {
   const instance = axios.create({
     baseURL: API_CONSTANTS.BASE_URL,
-    withCredentials: true, 
+    withCredentials: true,
   });
   return instance;
 };

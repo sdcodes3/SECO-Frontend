@@ -5,9 +5,19 @@ import axiosInstance from "../utils/axios";
 import API_CONSTANTS from "../utils/apiConstants";
 import useUser from "../hooks/useUser";
 
+
+const hashPassword = async (password: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+};
+
 const LoginSignUp = () => {
   const navigate = useNavigate();
-  const { user, updateUser } = useUser(); // Access user state and updateUser
+  const { user, updateUser } = useUser();
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [formData, setFormData] = useState({
     fullName: "",
@@ -54,19 +64,21 @@ const LoginSignUp = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const hashedPassword = await hashPassword(formData.password);
+
       const endpoint = activeTab === "login" ? "LOGIN" : "SIGNUP";
       const response = await axiosInstance.post(API_CONSTANTS[endpoint], {
         ...(activeTab === "login"
           ? {
-            email: formData.email,
-            password: formData.password,
-          }
+              email: formData.email,
+              password: hashedPassword,
+            }
           : {
-            name: formData.fullName,
-            email: formData.email,
-            password: formData.password,
-            role: formData.userType.toLowerCase(),
-          }),
+              name: formData.fullName,
+              email: formData.email,
+              password: hashedPassword,
+              role: formData.userType.toLowerCase(),
+            }),
       });
       if (response.status === 200 || response.status === 201) {
         const data = response.data;
@@ -82,10 +94,10 @@ const LoginSignUp = () => {
 
   const handleLogout = async () => {
     try {
-      await axiosInstance.post(API_CONSTANTS.LOGOUT); // Call logout endpoint to clear cookie
+      await axiosInstance.post(API_CONSTANTS.LOGOUT); 
       localStorage.removeItem("user");
       updateUser(null);
-      navigate("/"); // Redirect to login page
+      navigate("/"); 
     } catch (error: any) {
       console.error("Logout error:", error);
       alert("Logout failed. Please try again.");
@@ -145,9 +157,9 @@ const LoginSignUp = () => {
                   data-state={activeTab === "login" ? "active" : "inactive"}
                   id="tab-trigger-login"
                   className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${activeTab === "login"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                    }`}
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
                   onClick={() => handleTabChange("login")}
                   tabIndex={activeTab === "login" ? 0 : -1}
                 >
@@ -161,9 +173,9 @@ const LoginSignUp = () => {
                   data-state={activeTab === "signup" ? "active" : "inactive"}
                   id="tab-trigger-signup"
                   className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${activeTab === "signup"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                    }`}
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
                   onClick={() => handleTabChange("signup")}
                   tabIndex={activeTab === "signup" ? 0 : -1}
                 >
@@ -383,7 +395,7 @@ const LoginSignUp = () => {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         className={`lucide lucide-chevron-down h-4 w-4 opacity-50 transition-transform ${isDropdownOpen ? "rotate-180" : ""
-                          }`}
+                        }`}
                         aria-hidden="true"
                       >
                         <path d="m6 9 6 6 6-6"></path>
