@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import Logo from "../assets/seco logo.png";
 import { useNavigate } from "react-router-dom";
 import useUser from "@/hooks/useUser";
+import axiosInstance from "@/utils/axios";
+import API_CONSTANTS from "@/utils/apiConstants";
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -24,8 +26,7 @@ const Header = () => {
 
     const checkAuth = () => {
       const user = localStorage.getItem("user");
-      const token = localStorage.getItem("token");
-      if (!user || !token) {
+      if (!user) {
         navigate('/auth');
       }
     };
@@ -33,7 +34,7 @@ const Header = () => {
 
     const handleStorageChange = (e: StorageEvent) => {
       // @ts-ignore
-      if (e.key !== "user" || e.key !== "token") {
+      if (e.key !== "user") {
         setIsLoggedIn(!!e.newValue);
       } else {
         navigate('/auth')
@@ -56,19 +57,22 @@ const Header = () => {
     navigate("/auth");
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    updateUser(null);
-    setIsLoggedIn(false);
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      localStorage.removeItem("user");
+      await axiosInstance.post(API_CONSTANTS.LOGOUT); // Call logout endpoint to clear cookie
+      updateUser(null); // Clear user state/context
+      setIsLoggedIn(false);
+      navigate("/"); // Redirect to login page
+    } catch (error: any) {
+      console.error("Logout error:", error);
+      alert("Logout failed. Please try again.");
+    }
   };
-
   return (
     <header
-      className={`sticky top-0 left-0 right-0 z-40 py-4 px-6 transition-all duration-300 w-full h-20 ${
-        isScrolled ? "glass shadow-sm backdrop-blur-lg" : "bg-transparent"
-      }`}
+      className={`sticky top-0 left-0 right-0 z-40 py-4 px-6 transition-all duration-300 w-full h-20 ${isScrolled ? "glass shadow-sm backdrop-blur-lg" : "bg-transparent"
+        }`}
     >
       <div className="container mx-auto p">
         <div className="flex items-center justify-between">
@@ -79,9 +83,8 @@ const Header = () => {
           </a>
           <nav className="hidden md:flex items-center space-x-8">
             <a
-              className={`hover:text-foreground transition-all duration-200 relative py-2 flex items-center font-medium after:absolute after:bottom-0 after:bg-primary after:left-0 after:w-full after:h-0.5 ${
-                window.location.pathname === "/" ? "text-primary" : ""
-              }`}
+              className={`hover:text-foreground transition-all duration-200 relative py-2 flex items-center font-medium after:absolute after:bottom-0 after:bg-primary after:left-0 after:w-full after:h-0.5 ${window.location.pathname === "/" ? "text-primary" : ""
+                }`}
               href="/"
             >
               <svg
@@ -102,9 +105,8 @@ const Header = () => {
               Home
             </a>
             <a
-              className={`hover:text-foreground transition-all duration-200 relative py-2 flex items-center font-medium after:absolute after:bottom-0 after:bg-primary after:left-0 after:w-full after:h-0.5 ${
-                window.location.pathname === "/events" ? "text-primary" : ""
-              }`}
+              className={`hover:text-foreground transition-all duration-200 relative py-2 flex items-center font-medium after:absolute after:bottom-0 after:bg-primary after:left-0 after:w-full after:h-0.5 ${window.location.pathname === "/events" ? "text-primary" : ""
+                }`}
               href="/events"
             >
               <svg
@@ -129,11 +131,10 @@ const Header = () => {
             {isLoggedIn && (
               <>
                 <a
-                  className={`hover:text-foreground transition-all duration-200 relative py-2 flex items-center font-medium after:absolute after:bottom-0 after:bg-primary after:left-0 after:w-full after:h-0.5 ${
-                    window.location.pathname === "/dashboard"
-                      ? "text-primary"
-                      : ""
-                  }`}
+                  className={`hover:text-foreground transition-all duration-200 relative py-2 flex items-center font-medium after:absolute after:bottom-0 after:bg-primary after:left-0 after:w-full after:h-0.5 ${window.location.pathname === "/dashboard"
+                    ? "text-primary"
+                    : ""
+                    }`}
                   href="/dashboard"
                 >
                   <svg

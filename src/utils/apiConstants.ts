@@ -20,7 +20,7 @@ class APIConstants {
   FORGOT_PASSWORD = this.AUTH + "/forgot-password";
   RESET_PASSWORD = this.AUTH + "/reset-password";
   SIGNUP = this.AUTH + "/signup";
-
+  LOGOUT = this.AUTH + "/logout";
   //Events Endpoints
   GET_ALL_EVENTS = this.EVENTS + "/";
   SEARCH_EVENTS = this.EVENTS + "/search";
