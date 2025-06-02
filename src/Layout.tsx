@@ -1,8 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "./components/Sidebar";
+import { useNavigate } from "react-router-dom";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+      const checkAuth = () => {
+        const user = localStorage.getItem("user");
+        const token = localStorage.getItem("token");
+        if (!user || !token) {
+          navigate('/auth');
+        }
+      };
+      checkAuth();
+  
+      const handleStorageChange = (e: StorageEvent) => {
+        // @ts-ignore
+        if (e.key !== "user" || e.key !== "token") {
+          navigate('/auth');
+        } 
+      };
+  
+      window.addEventListener("storage", handleStorageChange);
+  
+      return () => {
+        window.removeEventListener("storage", handleStorageChange);
+      };
+    }, []);
 
   return (
     <div className="flex h-screen">

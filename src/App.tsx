@@ -11,6 +11,7 @@ import Account from "@/pages/Account";
 import EditEvent from "@/pages/EditEvent";
 import Discover from "@/pages/Discover";
 import Vault from "@/pages/Vault";
+import Investor from "@/pages/Investor"; // Import the new Investor page
 import Layout from "@/Layout";
 import useUser from "@/hooks/useUser";
 import Applications from "./pages/Applications";
@@ -20,13 +21,19 @@ import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import SuperAdminUsers from "./pages/SuperAdminUsers";
 import SuperAdminEvents from "./pages/SuperAdminEvents";
 import SuperAdminSettings from "./pages/SuperAdminSettings";
+import Judge from "./pages/Judge";
+import Professionals from "./pages/Professionals";
+import { OAuthCallback } from "./utils/OAuthCallback";
+
 const App = () => {
   const { isLoggedIn } = useUser();
+
   return (
     <Router>
       <Routes>
         <Route path="/auth" element={<LoginSignUp />} />
         <Route path="/" element={<Home />} />
+        <Route path="/oauth-callback" element={<OAuthCallback />} />
         <Route
           path="/events"
           element={
@@ -60,6 +67,14 @@ const App = () => {
           }
         />
         <Route
+          path="/judge"
+          element={
+            <Layout>
+              <Judge />
+            </Layout>
+          }
+        />
+        <Route
           path="/dashboard/applications/apply/:id"
           element={
             <Layout>
@@ -80,6 +95,14 @@ const App = () => {
           element={
             <Layout>
               <MyEvents />
+            </Layout>
+          }
+        />
+        <Route
+          path="/investors"
+          element={
+            <Layout>
+              <Investor />
             </Layout>
           }
         />
@@ -112,6 +135,14 @@ const App = () => {
           element={
             <Layout>
               <Vault />
+            </Layout>
+          }
+        />
+        <Route
+          path="/professionals"
+          element={
+            <Layout>
+              <Professionals />
             </Layout>
           }
         />

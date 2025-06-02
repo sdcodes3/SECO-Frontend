@@ -289,8 +289,9 @@ const Vault = () => {
   const getProjects = async () => {
     try {
       const response = await axiosInstance.get(API_CONSTANTS.GET_ROOT_PROJECTS);
-      setProject(response.data.data[0]);
-      const files = JSON.parse(response.data.data[0].file_ids);
+      const data = response.data;
+      setProject(data.data[0]);
+      const files = JSON.parse(data.data[0].file_ids);
       setFiles(files);
     } catch (error) {
       console.error("Error fetching projects:", error);
@@ -306,7 +307,12 @@ const Vault = () => {
       if (response.data) {
         const newProject = response.data.data[0];
         setProject(newProject);
-        setPathHistory((prev) => [...prev, newProject]);
+        setPathHistory((prev) => {
+          if (prev.length === 0 || prev[prev.length - 1].id !== newProject.id) {
+            return [...prev, newProject];
+          }
+          return prev;
+        });
         const files = JSON.parse(response.data.data[0].file_ids);
         setFiles(files);
       }
@@ -339,6 +345,7 @@ const Vault = () => {
       } else {
         alert("Error while file uploading");
       }
+      getProjectDetails(project?.id || "0");
     } catch (error) {
       throw error;
     }
