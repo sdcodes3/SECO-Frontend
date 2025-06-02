@@ -21,6 +21,7 @@ import SuperAdminUsers from "./pages/SuperAdminUsers";
 import SuperAdminEvents from "./pages/SuperAdminEvents";
 import SuperAdminSettings from "./pages/SuperAdminSettings";
 import Judge from "./pages/Judge";
+import Professionals from "./pages/Professionals";
 
 const App = () => {
   const { isLoggedIn } = useUser();
@@ -122,6 +123,14 @@ const App = () => {
           element={
             <Layout>
               <Vault />
+            </Layout>
+          }
+        />
+        <Route
+          path="/professionals"
+          element={
+            <Layout>
+              <Professionals />
             </Layout>
           }
         />
