@@ -6,19 +6,19 @@ import {
   deleteEventApplication,
   selectEventApplications,
   selectEventApplicationLoading,
-  selectEventApplicationError,  
+  selectEventApplicationError,
   selectEventApplicationSuccess,
-  clearMessages,
+  clearMessages
 } from "../slices/EventApplicationSlice";
 import { fetchEventById, selectEventsById } from "../slices/EventSlice";
-import { RootState, AppDispatch } from '../storage/store';
+import { AppDispatch } from "../storage/store";
 
 // Utility to format dates
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
-    day: "numeric",
+    day: "numeric"
   });
 };
 
@@ -52,7 +52,7 @@ const Applications = () => {
       dispatch(clearMessages());
     }
   }, [success, error, dispatch]);
-  
+
   const handleDelete = (id: string) => {
     dispatch(deleteEventApplication(id));
   };
@@ -127,7 +127,7 @@ const Applications = () => {
                                   style={{
                                     backgroundImage: event?.banner
                                       ? `url("${event.banner}")`
-                                      : 'url("https://images.unsplash.com/photo-1540304453527-62f979142a17?auto=format&fit=crop&q=80&w=500&h=280")',
+                                      : 'url("https://images.unsplash.com/photo-1540304453527-62f979142a17?auto=format&fit=crop&q=80&w=500&h=280")'
                                   }}
                                 ></div>
                                 <div>
@@ -149,17 +149,22 @@ const Applications = () => {
                             </td>
                             <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
                               <div className="flex flex-wrap gap-2">
-                                {application.documents && application.documents.length > 0 ? (
+                                {application.documents &&
+                                application.documents.length > 0 ? (
                                   application.documents.map((doc, idx) => (
                                     <div
                                       key={idx}
                                       className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-foreground bg-gray-50"
                                     >
-                                      {doc.length > 15 ? `${doc.substring(0, 12)}...` : doc}
+                                      {doc.length > 15
+                                        ? `${doc.substring(0, 12)}...`
+                                        : doc}
                                     </div>
                                   ))
                                 ) : (
-                                  <span className="text-muted-foreground">No documents</span>
+                                  <span className="text-muted-foreground">
+                                    No documents
+                                  </span>
                                 )}
                               </div>
                             </td>
@@ -225,7 +230,10 @@ const Applications = () => {
                                 </button>
                                 <button
                                   className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-red-100 hover:text-red-600 h-9 rounded-md px-3"
-                                  onClick={() => application.id && handleDelete(application.id)}
+                                  onClick={() =>
+                                    application.id &&
+                                    handleDelete(application.id)
+                                  }
                                   disabled={loading}
                                 >
                                   <svg
@@ -243,8 +251,18 @@ const Applications = () => {
                                     <path d="M3 6h18"></path>
                                     <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
                                     <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                    <line x1="10" y1="11" x2="10" y2="17"></line>
-                                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                                    <line
+                                      x1="10"
+                                      y1="11"
+                                      x2="10"
+                                      y2="17"
+                                    ></line>
+                                    <line
+                                      x1="14"
+                                      y1="11"
+                                      x2="14"
+                                      y2="17"
+                                    ></line>
                                   </svg>
                                   Delete
                                 </button>

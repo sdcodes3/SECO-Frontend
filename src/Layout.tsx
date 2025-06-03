@@ -7,36 +7,34 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-      const checkAuth = () => {
-        const user = localStorage.getItem("user");
-        const token = localStorage.getItem("token");
-        if (!user || !token) {
-          navigate('/auth');
-        }
-      };
-      checkAuth();
-  
-      const handleStorageChange = (e: StorageEvent) => {
-        // @ts-ignore
-        if (e.key !== "user" || e.key !== "token") {
-          navigate('/auth');
-        } 
-      };
-  
-      window.addEventListener("storage", handleStorageChange);
-  
-      return () => {
-        window.removeEventListener("storage", handleStorageChange);
-      };
-    }, []);
+    const checkAuth = () => {
+      const user = localStorage.getItem("user");
+      if (!user) {
+        navigate('/auth');
+      }
+    };
+    checkAuth();
+
+    const handleStorageChange = (e: StorageEvent) => {
+      // @ts-ignore
+      if (e.key !== "user") {
+        navigate('/auth');
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
 
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
       <div
-        className={`transition-all duration-300 ${
-          isSidebarOpen ? "w-64 opacity-100" : "w-0 opacity-0"
-        } overflow-hidden`}
+        className={`transition-all duration-300 ${isSidebarOpen ? "w-64 opacity-100" : "w-0 opacity-0"
+          } overflow-hidden`}
       >
         <div className={`${isSidebarOpen ? "block" : "hidden"}`}>
           <Sidebar />
@@ -62,9 +60,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className={`icon icon-tabler icons-tabler-outline icon-tabler-layout-sidebar-left-expand transition-transform duration-300 ${
-                isSidebarOpen ? "rotate-180" : ""
-              }`}
+              className={`icon icon-tabler icons-tabler-outline icon-tabler-layout-sidebar-left-expand transition-transform duration-300 ${isSidebarOpen ? "rotate-180" : ""
+                }`}
             >
               <path stroke="none" d="M0 0h24v24H0z" fill="none" />
               <path d="M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" />

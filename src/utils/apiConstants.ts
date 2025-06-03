@@ -20,7 +20,7 @@ class APIConstants {
   FORGOT_PASSWORD = this.AUTH + "/forgot-password";
   RESET_PASSWORD = this.AUTH + "/reset-password";
   SIGNUP = this.AUTH + "/signup";
-
+  LOGOUT = this.AUTH + "/logout";
   //Events Endpoints
   GET_ALL_EVENTS = this.EVENTS + "/";
   SEARCH_EVENTS = this.EVENTS + "/search";
@@ -37,7 +37,7 @@ class APIConstants {
   EDIT_PROJECT = (id: string) => `${this.PROJECTS}/${id}`;
   GET_PROJECT_DETAILS = (id: string) => `${this.PROJECTS}/detail/${id}`;
   FILE_UPLOAD_PROJECT = (id: string) => `${this.PROJECTS}/uploadfile/${id}`;
-
+  FILE_DELETE_PROJECT = (id: string) => `${this.PROJECTS}/deletefile/${id}`;
   //Form Endpoints
   GET_FORM_BY_EVENT = (id: string) => `${this.FORM}/${id}`;
   ADD_MANY_FORM = this.FORM + "/add/many";

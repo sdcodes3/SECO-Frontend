@@ -69,7 +69,204 @@ const Project = ({ onEdit, onClick, ...project }: ProjectProps) => {
     </div>
   );
 };
+const FileTabs = ({ files, projectId, onFileDeleted }: any) => {
+  const [activeTab, setActiveTab] = useState("all");
+  const deleteFile = async (fileUrl: string) => {
+    if (!confirm("Are you sure you want to delete this file?")) return;
 
+    try {
+      const res = await axiosInstance.delete(
+        `${API_CONSTANTS.FILE_DELETE_PROJECT(projectId)}`,
+        {
+          data: { fileUrl }
+        }
+      );
+
+      if (!res.data || !res.data.success) {
+        // const err = await res.json();
+      }
+
+      alert("File deleted successfully.");
+      onFileDeleted?.(); // refresh file list if provided
+    } catch (err: any) {
+      console.error(err);
+      alert("Error deleting file: " + err.message);
+    }
+  };
+
+  const filterFiles = (files: any[], type: string) => {
+    if (type === "all") return files;
+
+    if (type === "pdf") return files.filter((f) => f.mimetype.includes("pdf"));
+    if (type === "excel")
+      return files.filter(
+        (f) =>
+          f.mimetype.includes("spreadsheet") || f.mimetype.includes("excel")
+      );
+    if (type === "presentation")
+      return files.filter((f) => f.mimetype.includes("presentation"));
+    if (type === "document")
+      return files.filter(
+        (f) => f.mimetype.includes("word") || f.mimetype.includes("text")
+      );
+    if (type === "media")
+      return files.filter(
+        (f) =>
+          f.mimetype.startsWith("video") ||
+          f.mimetype.startsWith("image") ||
+          f.mimetype.startsWith("audio")
+      );
+
+    return [];
+  };
+
+  const filteredFiles = filterFiles(files || [], activeTab);
+
+  const tabs = [
+    { key: "all", label: "All Files" },
+    { key: "pdf", label: "PDFs" },
+    { key: "excel", label: "Spreadsheets" },
+    { key: "presentation", label: "Presentations" },
+    { key: "document", label: "Documents" },
+    { key: "media", label: "Media" }
+  ];
+
+  return (
+    <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="p-4 bg-gray-50 border-b">
+        <div
+          role="tablist"
+          className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground"
+        >
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              onClick={() => setActiveTab(tab.key)}
+              aria-selected={activeTab === tab.key}
+              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+                activeTab === tab.key
+                  ? "bg-background text-foreground shadow-sm"
+                  : ""
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div
+        role="tabpanel"
+        tabIndex={0}
+        className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 p-0"
+      >
+        <div className="overflow-x-auto">
+          <div className="relative w-full overflow-auto">
+            <table className="w-full caption-bottom text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="h-12 px-4 text-left font-medium text-muted-foreground w-[400px]">
+                    Name
+                  </th>
+                  <th className="h-12 px-4 text-left font-medium text-muted-foreground">
+                    Type
+                  </th>
+                  <th className="h-12 px-4 text-left font-medium text-muted-foreground">
+                    Size
+                  </th>
+                  <th className="h-12 px-4 text-left font-medium text-muted-foreground">
+                    Date Added
+                  </th>
+                  <th className="h-12 px-4 text-left font-medium text-muted-foreground">
+                    Tags
+                  </th>
+                  <th className="h-12 px-4 text-right font-medium text-muted-foreground">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredFiles.length === 0 ? (
+                  <tr className="border-b">
+                    <td
+                      colSpan={6}
+                      className="p-4 text-center text-muted-foreground py-8"
+                    >
+                      <span className="block"> No files found</span>
+                      <button
+                        className="inline-flex items-center gap-2 mt-4 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                        onClick={() =>
+                          document.getElementById("event-banner-input")?.click()
+                        }
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          className="w-4 h-4"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          />
+                        </svg>
+                        Upload Files
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredFiles.map((file) => (
+                    <tr key={file.id} className="border-b hover:bg-muted/50">
+                      <td className="h-12 px-4">{file.originalname}</td>
+                      <td className="h-12 px-4">{file.mimetype}</td>
+                      <td className="h-12 px-4">{file.size}</td>
+                      <td className="h-12 px-4">Date Added</td>
+                      <td className="h-12 px-4">Tags</td>
+                      <td className="h-12 px-4 text-right space-x-2 flex items-center">
+                        <button
+                          onClick={() => downloadDocument(file)}
+                          className="inline-flex items-center rounded-md border bg-background hover:bg-accent h-8 px-3 text-sm"
+                        >
+                          View/Download
+                        </button>
+                        <button
+                          onClick={() => deleteFile(file.fileUrl)}
+                          className="inline-flex items-center rounded-md border border-destructive bg-destructive text-white hover:bg-destructive/90 h-8 px-3 text-sm"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+const downloadDocument = (file: any) => {
+  try {
+    const link = document.createElement("a");
+    link.href = file.fileUrl;
+    link.download = file.originalname || "document";
+    link.setAttribute("type", file.mimetype || "application/octet-stream");
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error("Download failed:", error);
+    alert("Failed to download file. Please try again.");
+  }
+};
 const Vault = () => {
   const navigate = useNavigate();
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
@@ -84,7 +281,7 @@ const Vault = () => {
     website: "",
     linkedin: "",
     twitter: "",
-    store_link: "",
+    store_link: ""
   });
   const [files, setFiles] = useState<any[]>([{}]);
   const [loading, setLoading] = useState(false);
@@ -137,11 +334,13 @@ const Vault = () => {
         formDataToSend,
         {
           headers: {
-            "Content-Type": "multipart/form-data",
-          },
+            "Content-Type": "multipart/form-data"
+          }
         }
       );
-      if (response.data) {
+      console.log("File upload response:", response.data);
+      if (response.data && response.data) {
+        getProjectDetails(project?.id || "0");
         alert("File uploaded successfully!");
       } else {
         alert("Error while file uploading");
@@ -176,7 +375,7 @@ const Vault = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: value
     }));
   };
 
@@ -186,7 +385,7 @@ const Vault = () => {
     try {
       const response = await axiosInstance.post(API_CONSTANTS.CREATE_PROJECT, {
         ...formData,
-        parent_id: project?.id || null,
+        parent_id: project?.id || null
       });
 
       if (response.data) {
@@ -196,7 +395,7 @@ const Vault = () => {
           website: "",
           linkedin: "",
           twitter: "",
-          store_link: "",
+          store_link: ""
         });
         // Refresh projects list
         getProjects();
@@ -221,7 +420,7 @@ const Vault = () => {
         website: response.data.data.website || "",
         linkedin: response.data.data.linkedin || "",
         twitter: response.data.data.twitter || "",
-        store_link: response.data.data.store_link || "",
+        store_link: response.data.data.store_link || ""
       });
       setIsEditModalOpen(true);
     }
@@ -237,7 +436,7 @@ const Vault = () => {
         API_CONSTANTS.EDIT_PROJECT(selectedProject.id),
         {
           ...formData,
-          parent_id: project?.id || null,
+          parent_id: project?.id || null
         }
       );
 
@@ -248,7 +447,7 @@ const Vault = () => {
           website: "",
           linkedin: "",
           twitter: "",
-          store_link: "",
+          store_link: ""
         });
         // Refresh projects list
         getProjects();
@@ -342,7 +541,7 @@ const Vault = () => {
                 <input
                   id="event-banner-input"
                   type="file"
-                  accept="image/png, image/jpeg"
+                  accept="*/*"
                   className="hidden"
                   onChange={handleBannerUpload}
                 />
@@ -425,253 +624,11 @@ const Vault = () => {
               />
             ))}
           </div>
-          <div
-            dir="ltr"
-            data-orientation="horizontal"
-            className="bg-white rounded-lg border shadow-sm overflow-hidden"
-          >
-            <div className="p-4 bg-gray-50 border-b">
-              <div
-                role="tablist"
-                aria-orientation="horizontal"
-                className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground"
-                tabIndex={0}
-                data-orientation="horizontal"
-              >
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected="true"
-                  aria-controls="radix-:rj:-content-all"
-                  data-state="active"
-                  id="radix-:rj:-trigger-all"
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                  tabIndex={-1}
-                  data-orientation="horizontal"
-                  data-radix-collection-item=""
-                >
-                  All Files
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected="false"
-                  aria-controls="radix-:rj:-content-pdf"
-                  data-state="inactive"
-                  id="radix-:rj:-trigger-pdf"
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                  tabIndex={-1}
-                  data-orientation="horizontal"
-                  data-radix-collection-item=""
-                >
-                  PDFs
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected="false"
-                  aria-controls="radix-:rj:-content-excel"
-                  data-state="inactive"
-                  id="radix-:rj:-trigger-excel"
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                  tabIndex={-1}
-                  data-orientation="horizontal"
-                  data-radix-collection-item=""
-                >
-                  Spreadsheets
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected="false"
-                  aria-controls="radix-:rj:-content-presentation"
-                  data-state="inactive"
-                  id="radix-:rj:-trigger-presentation"
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                  tabIndex={-1}
-                  data-orientation="horizontal"
-                  data-radix-collection-item=""
-                >
-                  Presentations
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected="false"
-                  aria-controls="radix-:rj:-content-document"
-                  data-state="inactive"
-                  id="radix-:rj:-trigger-document"
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                  tabIndex={-1}
-                  data-orientation="horizontal"
-                  data-radix-collection-item=""
-                >
-                  Documents
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected="false"
-                  aria-controls="radix-:rj:-content-media"
-                  data-state="inactive"
-                  id="radix-:rj:-trigger-media"
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                  tabIndex={-1}
-                  data-orientation="horizontal"
-                  data-radix-collection-item=""
-                >
-                  Media
-                </button>
-              </div>
-            </div>
-            <div
-              data-state="active"
-              data-orientation="horizontal"
-              role="tabpanel"
-              aria-labelledby="radix-:rj:-trigger-all"
-              id="radix-:rj:-content-all"
-              tabIndex={0}
-              className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 p-0"
-            >
-              <div className="overflow-x-auto">
-                <div className="relative w-full overflow-auto">
-                  <table className="w-full caption-bottom text-sm">
-                    <thead className="[_tr]:border-b">
-                      <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                        <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0 w-[400px]">
-                          Name
-                        </th>
-                        <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0">
-                          Type
-                        </th>
-                        <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0">
-                          Size
-                        </th>
-                        <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0">
-                          Date Added
-                        </th>
-                        <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0">
-                          Tags
-                        </th>
-                        <th className="h-12 px-4 align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0 text-right">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="[_tr:last-child]:border-0">
-                      {files?.length == 0 && (
-                        <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                          <td
-                            className="p-4 align-middle [:has([role=checkbox])]:pr-0 text-center py-8"
-                            colSpan={6}
-                          >
-                            <div className="text-muted-foreground">
-                              No files found
-                            </div>
-                            <button
-                              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [_svg]:pointer-events-none [_svg]:size-4 [_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 mt-4"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                document
-                                  .getElementById("event-banner-input")
-                                  ?.click();
-                              }}
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                className="mr-2 h-4 w-4"
-                              >
-                                <path
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                ></path>
-                              </svg>{" "}
-                              Upload Files
-                            </button>
-                          </td>
-                        </tr>
-                      )}
-                      {files?.length > 0 &&
-                        files?.map((file) => {
-                          return (
-                            <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                              <td className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0 w-[400px]">
-                                {file.originalname}
-                              </td>
-                              <td className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0">
-                                {file.mimetype}
-                              </td>
-                              <td className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0">
-                                {file.size}
-                              </td>
-                              <td className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0">
-                                Date Added
-                              </td>
-                              <td className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0">
-                                Tags
-                              </td>
-                              <td className="h-12 px-4 align-middle font-medium text-muted-foreground [:has([role=checkbox])]:pr-0 text-right">
-                                Actions
-                              </td>
-                            </tr>
-                          );
-                        })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-            <div
-              data-state="inactive"
-              data-orientation="horizontal"
-              role="tabpanel"
-              aria-labelledby="radix-:rj:-trigger-pdf"
-              id="radix-:rj:-content-pdf"
-              tabIndex={0}
-              className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 p-0"
-            ></div>
-            <div
-              data-state="inactive"
-              data-orientation="horizontal"
-              role="tabpanel"
-              aria-labelledby="radix-:rj:-trigger-excel"
-              id="radix-:rj:-content-excel"
-              tabIndex={0}
-              className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 p-0"
-            ></div>
-            <div
-              data-state="inactive"
-              data-orientation="horizontal"
-              role="tabpanel"
-              aria-labelledby="radix-:rj:-trigger-presentation"
-              id="radix-:rj:-content-presentation"
-              tabIndex={0}
-              className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 p-0"
-            ></div>
-            <div
-              data-state="inactive"
-              data-orientation="horizontal"
-              role="tabpanel"
-              aria-labelledby="radix-:rj:-trigger-document"
-              id="radix-:rj:-content-document"
-              tabIndex={0}
-              className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 p-0"
-            ></div>
-            <div
-              data-state="inactive"
-              data-orientation="horizontal"
-              role="tabpanel"
-              aria-labelledby="radix-:rj:-trigger-media"
-              id="radix-:rj:-content-media"
-              tabIndex={0}
-              className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 p-0"
-            ></div>
-          </div>
+          <FileTabs
+            files={files}
+            projectId={project?.id || "0"}
+            onFileDeleted={getProjectDetails.bind(null, project?.id || "0")}
+          />
         </div>
       </div>
 
