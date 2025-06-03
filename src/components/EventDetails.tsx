@@ -3,7 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import Header from "./Header";
 import axiosInstance from "../utils/axios";
 import API_CONSTANTS from "../utils/apiConstants";
-import useUser from "@/hooks/useUser";
+import {selectIsLoggedIn } from "../slices/AuthSlice";
+import { useSelector } from 'react-redux';
 import Suspence from "./Suspence";
 
 interface Event {
@@ -27,7 +28,7 @@ const EventDetails = () => {
   const [event, setEvent] = useState<Event>({} as Event);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { isLoggedIn } = useUser();
+  const isLoggedIn = useSelector(selectIsLoggedIn);
   const handleShare = () => {
     window.open(`${window.location.origin}/event/${id}`, "_blank");
   };

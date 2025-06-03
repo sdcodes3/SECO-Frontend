@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axiosInstance from './axios';
 import API_CONSTANTS from './apiConstants';
-import useUser from "../hooks/useUser";
+import { useDispatch } from 'react-redux';
+import { toast } from 'react-toastify';
+import { setUser } from "../slices/AuthSlice";
 
 export const OAuthCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { updateUser } = useUser();
+  const dispatch = useDispatch();
   const [isProcessing, setIsProcessing] = useState(true);
 
   useEffect(() => {
@@ -22,16 +24,15 @@ export const OAuthCallback = () => {
           no_code: 'No authorization code received',
           auth_failed: 'Authentication failed. Please try again.',
         };
-
         const message = errorMessages[error as keyof typeof errorMessages] || 'Authentication failed';
-        alert(message);
+        toast.error(message);
         navigate('/auth', { replace: true });
         setIsProcessing(false);
         return;
       }
 
       if (!code || !provider) {
-        alert('Invalid OAuth callback - missing code or provider');
+        toast.error('Invalid OAuth callback - missing code or provider');
         navigate('/auth', { replace: true });
         setIsProcessing(false);
         return;
@@ -42,15 +43,16 @@ export const OAuthCallback = () => {
         const response = await axiosInstance.post(endpoint, { code });
         if (response.status === 200) {
           const data = response.data;
-          updateUser(JSON.stringify(data.user)); // Store user in state/context
+          dispatch(setUser(data.user));
           navigate("/dashboard", { replace: true });
         }
       } catch (error: any) {
+        console.error('OAuth callback error:', error);
         const errorMessage = error.response?.data?.error ||
           error.response?.data?.message ||
           error.message ||
-          "Authentication failed. Please try again.";
-        alert(`Authentication failed: ${errorMessage}`);
+          'An error occurred during authentication. Please try again.';
+        toast.error(errorMessage);
         navigate('/auth', { replace: true });
       } finally {
         setIsProcessing(false);
@@ -58,7 +60,7 @@ export const OAuthCallback = () => {
     };
 
     handleOAuthCallback();
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, [dispatch, navigate, searchParams]);
 
   return (
     <div className="flex h-screen items-center justify-center">

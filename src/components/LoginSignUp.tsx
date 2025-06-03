@@ -1,23 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Logo from "../assets/seco logo.png";
 import { useNavigate } from "react-router-dom";
-import axiosInstance from "../utils/axios";
-import API_CONSTANTS from "../utils/apiConstants";
-import useUser from "../hooks/useUser";
-
-
-const hashPassword = async (password: string): Promise<string> => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-};
+import { useDispatch, useSelector } from 'react-redux';
+import { login, signup, logoutAsync, selectUser, selectIsLoggedIn, selectLoading, selectError, clearError } from "../slices/AuthSlice";
+import { toast } from 'react-toastify';
+import API_CONSTANTS from "@/utils/apiConstants";
 
 const LoginSignUp = () => {
   const navigate = useNavigate();
-  const { user, updateUser } = useUser();
+  const dispatch = useDispatch();
+  const user = useSelector(selectUser);
+  const isLoggedIn = useSelector(selectIsLoggedIn);
+  const loading = useSelector(selectLoading);
+  const error = useSelector(selectError);
+
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [formData, setFormData] = useState({
     fullName: "",
@@ -27,8 +23,17 @@ const LoginSignUp = () => {
   });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  // Show error toast when error changes
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      dispatch(clearError()); // Clear error after showing it
+    }
+  }, [error, dispatch]);
+
   const handleTabChange = (tab: "login" | "signup") => {
     setActiveTab(tab);
+    dispatch(clearError()); // Clear any existing error when switching tabs
   };
 
   const handleInputChange = (
@@ -57,51 +62,41 @@ const LoginSignUp = () => {
       window.location.href = apiEndpoint;
     } catch (error: any) {
       console.error("OAuth authentication error:", error);
-      alert(error.message || "OAuth authentication failed. Please try again.");
+      toast.error(error.message || "OAuth authentication failed. Please try again.");
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const hashedPassword = await hashPassword(formData.password);
-
-      const endpoint = activeTab === "login" ? "LOGIN" : "SIGNUP";
-      const response = await axiosInstance.post(API_CONSTANTS[endpoint], {
-        ...(activeTab === "login"
-          ? {
-              email: formData.email,
-              password: hashedPassword,
-            }
-          : {
-              name: formData.fullName,
-              email: formData.email,
-              password: hashedPassword,
-              role: formData.userType.toLowerCase(),
-            }),
+    if (activeTab === "login") {
+      dispatch(login({
+        email: formData.email,
+        password: formData.password,
+      }) as any).then((result: any) => {
+        if (result.meta.requestStatus === 'fulfilled') {
+          navigate("/dashboard");
+        }
       });
-      if (response.status === 200 || response.status === 201) {
-        const data = response.data;
-        updateUser(JSON.stringify(data.user)); // Store user in state/context
-        navigate("/dashboard");
-      }
-    } catch (error: any) {
-      console.error("Authentication error:", error);
-      const errorMessage = error.response?.data?.error || error.message || "Authentication failed. Please try again.";
-      alert(errorMessage);
+    } else {
+      dispatch(signup({
+        name: formData.fullName,
+        email: formData.email,
+        password: formData.password,
+        role: formData.userType,
+      }) as any).then((result: any) => {
+        if (result.meta.requestStatus === 'fulfilled') {
+          navigate("/dashboard");
+        }
+      });
     }
   };
 
   const handleLogout = async () => {
-    try {
-      await axiosInstance.post(API_CONSTANTS.LOGOUT); 
-      localStorage.removeItem("user");
-      updateUser(null);
-      navigate("/"); 
-    } catch (error: any) {
-      console.error("Logout error:", error);
-      alert("Logout failed. Please try again.");
-    }
+    dispatch(logoutAsync() as any).then((result: any) => {
+      if (result.meta.requestStatus === 'fulfilled' || result.meta.requestStatus === 'rejected') {
+        navigate("/"); // Redirect regardless of success/failure since state is cleared
+      }
+    });
   };
 
   const toggleDropdown = () => {
@@ -131,14 +126,15 @@ const LoginSignUp = () => {
         </div>
 
         <div className="p-6 pt-0">
-          {user ? (
+          {isLoggedIn ? (
             <div className="text-center">
-              <p className="mb-4">You are already logged in as {JSON.parse(user).email}</p>
+              <p className="mb-4">You are already logged in as {user?.email}</p>
               <button
                 className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full"
                 onClick={handleLogout}
+                disabled={loading}
               >
-                Logout
+                {loading ? "Logging out..." : "Logout"}
               </button>
             </div>
           ) : (
@@ -157,8 +153,8 @@ const LoginSignUp = () => {
                   data-state={activeTab === "login" ? "active" : "inactive"}
                   id="tab-trigger-login"
                   className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${activeTab === "login"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                   }`}
                   onClick={() => handleTabChange("login")}
                   tabIndex={activeTab === "login" ? 0 : -1}
@@ -173,8 +169,8 @@ const LoginSignUp = () => {
                   data-state={activeTab === "signup" ? "active" : "inactive"}
                   id="tab-trigger-signup"
                   className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${activeTab === "signup"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                   }`}
                   onClick={() => handleTabChange("signup")}
                   tabIndex={activeTab === "signup" ? 0 : -1}
@@ -206,6 +202,7 @@ const LoginSignUp = () => {
                       value={formData.email}
                       onChange={handleInputChange}
                       aria-invalid="false"
+                      disabled={loading}
                     />
                   </div>
 
@@ -222,15 +219,16 @@ const LoginSignUp = () => {
                       value={formData.password}
                       onChange={handleInputChange}
                       aria-invalid="false"
+                      disabled={loading}
                     />
                   </div>
                   <div className="space-y-2">
                     <button
-                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full"
                       type="submit"
-                      onClick={handleSubmit}
+                      disabled={loading}
                     >
-                      Sign In
+                      {loading ? "Signing in..." : "Sign In"}
                     </button>
                   </div>
                   <div className="relative">
@@ -249,6 +247,7 @@ const LoginSignUp = () => {
                       type="button"
                       onClick={() => handleOAuthLoginTest("google")}
                       className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-gray-100 text-black"
+                      disabled={loading}
                     >
                       <img
                         src="https://www.svgrepo.com/show/475656/google-color.svg"
@@ -262,6 +261,7 @@ const LoginSignUp = () => {
                       type="button"
                       onClick={() => handleOAuthLoginTest("linkedin")}
                       className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-[#0077B5] text-white hover:bg-[#0077B5]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      disabled={loading}
                     >
                       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
@@ -301,6 +301,7 @@ const LoginSignUp = () => {
                   <button
                     type="button"
                     className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 w-full text-xs"
+                    disabled={loading}
                   >
                     Create Test Users
                   </button>
@@ -330,6 +331,7 @@ const LoginSignUp = () => {
                       value={formData.fullName}
                       onChange={handleInputChange}
                       aria-invalid="false"
+                      disabled={loading}
                     />
                   </div>
 
@@ -346,6 +348,7 @@ const LoginSignUp = () => {
                       value={formData.email}
                       onChange={handleInputChange}
                       aria-invalid="false"
+                      disabled={loading}
                     />
                   </div>
 
@@ -362,6 +365,7 @@ const LoginSignUp = () => {
                       value={formData.password}
                       onChange={handleInputChange}
                       aria-invalid="false"
+                      disabled={loading}
                     />
                   </div>
 
@@ -380,6 +384,7 @@ const LoginSignUp = () => {
                       data-placeholder=""
                       className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
                       onClick={toggleDropdown}
+                      disabled={loading}
                     >
                       <span className="pointer-events-none">
                         {formData.userType || "Select user type"}
@@ -394,8 +399,7 @@ const LoginSignUp = () => {
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className={`lucide lucide-chevron-down h-4 w-4 opacity-50 transition-transform ${isDropdownOpen ? "rotate-180" : ""
-                        }`}
+                        className={`lucide lucide-chevron-down h-4 w-4 opacity-50 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`}
                         aria-hidden="true"
                       >
                         <path d="m6 9 6 6 6-6"></path>
@@ -446,9 +450,10 @@ const LoginSignUp = () => {
 
                   <button
                     type="submit"
-                    className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                    disabled={loading}
                   >
-                    Create Account
+                    {loading ? "Creating account..." : "Create Account"}
                   </button>
                 </form>
               </div>
