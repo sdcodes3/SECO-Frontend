@@ -1,18 +1,21 @@
-import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from "react-router-dom";
 import axiosInstance from './axios';
 import API_CONSTANTS from './apiConstants';
 import useUser from "../hooks/useUser";
+
 export const OAuthCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { updateUser } = useUser();
+  const [isProcessing, setIsProcessing] = useState(true);
 
   useEffect(() => {
     const handleOAuthCallback = async () => {
       const code = searchParams.get('code');
       const provider = searchParams.get('provider');
       const error = searchParams.get('error');
+
       if (error) {
         const errorMessages = {
           oauth_denied: 'OAuth access was denied',
@@ -23,12 +26,14 @@ export const OAuthCallback = () => {
         const message = errorMessages[error as keyof typeof errorMessages] || 'Authentication failed';
         alert(message);
         navigate('/auth', { replace: true });
+        setIsProcessing(false);
         return;
       }
 
       if (!code || !provider) {
         alert('Invalid OAuth callback - missing code or provider');
         navigate('/auth', { replace: true });
+        setIsProcessing(false);
         return;
       }
 
@@ -47,18 +52,24 @@ export const OAuthCallback = () => {
           "Authentication failed. Please try again.";
         alert(`Authentication failed: ${errorMessage}`);
         navigate('/auth', { replace: true });
+      } finally {
+        setIsProcessing(false);
       }
     };
 
     handleOAuthCallback();
-  }, [searchParams, navigate, updateUser]);
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
-        <p className="mt-4">Processing authentication...</p>
-      </div>
+    <div className="flex h-screen items-center justify-center">
+      {isProcessing ? (
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto"></div>
+          <p className="mt-4 text-sm text-gray-700">Processing authentication...</p>
+        </div>
+      ) : (
+        <p className="text-sm text-gray-600">Redirecting...</p>
+      )}
     </div>
   );
 };
