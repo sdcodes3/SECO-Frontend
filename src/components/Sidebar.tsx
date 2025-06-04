@@ -14,7 +14,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
     const checkAuth = () => {
       const user = localStorage.getItem("user");
       if (!user) {
-        navigate('/auth');
+        navigate('/');
       }
     };
     checkAuth();
@@ -22,7 +22,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
     const handleStorageChange = (e: StorageEvent) => {
       // @ts-ignore
       if (e.key !== "user") {
-        navigate('/auth');
+        navigate('/');
       }
     };
 

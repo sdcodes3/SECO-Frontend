@@ -1,20 +1,20 @@
 import { useState, useEffect } from "react";
 import Logo from "../assets/seco logo.png";
 import { useNavigate } from "react-router-dom";
-import useUser from "@/hooks/useUser";
-import axiosInstance from "@/utils/axios";
-import API_CONSTANTS from "@/utils/apiConstants";
+import { useDispatch, useSelector } from 'react-redux';
+import { logoutAsync, selectIsLoggedIn } from "../slices/AuthSlice"; 
+import { toast } from 'react-toastify';
+import type { AppDispatch } from '../storage/store'; 
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const { updateUser } = useUser();
+  const dispatch = useDispatch<AppDispatch>();
+  const isLoggedIn = useSelector(selectIsLoggedIn);
 
   useEffect(() => {
     const handleScroll = () => {
-      // Apply the effect when scrolled more than 10px
       if (window.scrollY > 10) {
         setIsScrolled(true);
       } else {
@@ -25,19 +25,22 @@ const Header = () => {
     window.addEventListener("scroll", handleScroll);
 
     const checkAuth = () => {
-      const user = localStorage.getItem("user");
-      if (!user) {
-        navigate('/auth');
+      if (!isLoggedIn) {
+        navigate('/');
       }
     };
     checkAuth();
 
-    const handleStorageChange = (e: StorageEvent) => {
-      // @ts-ignore
-      if (e.key !== "user") {
-        setIsLoggedIn(!!e.newValue);
-      } else {
-        navigate('/auth')
+    const handleStorageChange = async (e: StorageEvent) => {
+      if (e.key === "user" && !e.newValue) {
+        try {
+          await dispatch(logoutAsync()).unwrap();
+          navigate('/');
+        } catch (error: any) {
+          console.error("Logout error in storage change:", error);
+          toast.error("Failed to sync logout state. Please sign out manually.");
+          navigate('/');
+        }
       }
     };
 
@@ -47,7 +50,7 @@ const Header = () => {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("storage", handleStorageChange);
     };
-  }, []);
+  }, [isLoggedIn, navigate, dispatch]);
 
   const handleSignIn = () => {
     navigate("/auth");
@@ -59,32 +62,26 @@ const Header = () => {
 
   const handleLogout = async () => {
     try {
-      localStorage.removeItem("user");
-      await axiosInstance.post(API_CONSTANTS.LOGOUT); // Call logout endpoint to clear cookie
-      updateUser(null); // Clear user state/context
-      setIsLoggedIn(false);
-      navigate("/"); // Redirect to login page
+      await dispatch(logoutAsync()).unwrap();
+      navigate("/"); // Redirect to home page
     } catch (error: any) {
       console.error("Logout error:", error);
-      alert("Logout failed. Please try again.");
+      toast.error("Logout failed. Please try again.");
     }
   };
+
   return (
     <header
-      className={`sticky top-0 left-0 right-0 z-40 py-4 px-6 transition-all duration-300 w-full h-20 ${isScrolled ? "glass shadow-sm backdrop-blur-lg" : "bg-transparent"
-        }`}
+      className={`sticky top-0 left-0 right-0 z-40 py-4 px-6 transition-all duration-300 w-full h-20 ${isScrolled ? "glass shadow-sm backdrop-blur-lg" : "bg-transparent"}`}
     >
       <div className="container mx-auto p">
         <div className="flex items-center justify-between">
           <a className="flex items-center" href="/">
-            {/* <span className="text-2xl font-bold text-gradient">Seco</span>
-            <span className="ml-1 text-2xl font-medium">Discover</span> */}
             <img src={Logo} alt="logo" width={32} className="w-20" />
           </a>
           <nav className="hidden md:flex items-center space-x-8">
             <a
-              className={`hover:text-foreground transition-all duration-200 relative py-2 flex items-center font-medium after:absolute after:bottom-0 after:bg-primary after:left-0 after:w-full after:h-0.5 ${window.location.pathname === "/" ? "text-primary" : ""
-                }`}
+              className={`hover:text-foreground transition-all duration-200 relative py-2 flex items-center font-medium after:absolute after:bottom-0 after:bg-primary after:left-0 after:w-full after:h-0.5 ${window.location.pathname === "/" ? "text-primary" : ""}`}
               href="/"
             >
               <svg
@@ -105,8 +102,7 @@ const Header = () => {
               Home
             </a>
             <a
-              className={`hover:text-foreground transition-all duration-200 relative py-2 flex items-center font-medium after:absolute after:bottom-0 after:bg-primary after:left-0 after:w-full after:h-0.5 ${window.location.pathname === "/events" ? "text-primary" : ""
-                }`}
+              className={`hover:text-foreground transition-all duration-200 relative py-2 flex items-center font-medium after:absolute after:bottom-0 after:bg-primary after:left-0 after:w-full after:h-0.5 ${window.location.pathname === "/events" ? "text-primary" : ""}`}
               href="/events"
             >
               <svg
@@ -131,10 +127,7 @@ const Header = () => {
             {isLoggedIn && (
               <>
                 <a
-                  className={`hover:text-foreground transition-all duration-200 relative py-2 flex items-center font-medium after:absolute after:bottom-0 after:bg-primary after:left-0 after:w-full after:h-0.5 ${window.location.pathname === "/dashboard"
-                    ? "text-primary"
-                    : ""
-                    }`}
+                  className={`hover:text-foreground transition-all duration-200 relative py-2 flex items-center font-medium after:absolute after:bottom-0 after:bg-primary after:left-0 after:w-full after:h-0.5 ${window.location.pathname === "/dashboard" ? "text-primary" : ""}`}
                   href="/dashboard"
                 >
                   <svg

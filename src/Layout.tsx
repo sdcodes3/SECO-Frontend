@@ -10,7 +10,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     const checkAuth = () => {
       const user = localStorage.getItem("user");
       if (!user) {
-        navigate('/auth');
+        navigate('/');
       }
     };
     checkAuth();
@@ -18,7 +18,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     const handleStorageChange = (e: StorageEvent) => {
       // @ts-ignore
       if (e.key !== "user") {
-        navigate('/auth');
+        navigate('/');
       }
     };
 
