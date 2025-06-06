@@ -28,7 +28,7 @@ import {
   clearMessages,
   resetCreationState,
   setError,
-} from '../slices/EventSlice'
+} from '../slices/EventSlice';
 import Input from "@/components/UI/Input";
 
 const CreateEvent = () => {
@@ -51,6 +51,26 @@ const CreateEvent = () => {
     error,
     success,
   } = useSelector((state: RootState) => state.event.creation);
+
+  // Sync event start_date and end_date with first stage's dates
+  useEffect(() => {
+    if (stages.length > 0) {
+      dispatch(
+        setFormData({
+          start_date: stages[0].start_date || new Date().toISOString().split('T')[0],
+          end_date: stages[0].end_date || new Date().toISOString().split('T')[0],
+          start_time: stages[0].start_time || '', // Sync start_time
+          end_time: stages[0].end_time || '',     // Sync end_time
+        })
+      );
+    }
+  }, [
+    stages[0]?.start_date,
+    stages[0]?.end_date,
+    stages[0]?.start_time,
+    stages[0]?.end_time,
+    dispatch,
+  ]);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -88,15 +108,25 @@ const CreateEvent = () => {
   };
 
   const validateForm = () => {
-    const errors: Record<string, string> = {};
-    if (!formData.title.trim()) errors.title = "Title is required";
-    if (!formData.description.trim()) errors.description = "Description is required";
-    if (!formData.start_date) errors.start_date = "Start date is required";
-    if (!formData.end_date) errors.end_date = "End date is required";
-    if (!formData.location_link.trim()) errors.location_link = "Location is required";
-    if (!formData.type) errors.type = "Type is required";
-    return errors;
-  };
+  const errors: Record<string, string> = {};
+  if (!formData.title.trim()) errors.title = "Title is required";
+  if (!formData.description.trim()) errors.description = "Description is required";
+  if (!formData.location_link.trim()) errors.location_link = "Location is required";
+  if (!formData.type) errors.type = "Type is required";
+  if (stages.length === 0 || !stages[0].start_date) errors.stage_start_date = "Stage 1 start date is required";
+  if (stages.length === 0 || !stages[0].end_date) errors.stage_end_date = "Stage 1 end date is required";
+  if (stages.length === 0 || !stages[0].start_time) errors.stage_start_time = "Stage 1 start time is required";
+  if (stages.length === 0 || !stages[0].end_time) errors.stage_end_time = "Stage 1 end time is required";
+  if (stages[0].start_date === stages[0].end_date) errors.start_end_date_same = "start date and end data cannot be same";
+  if (stages[0].start_date && stages[0].end_date && stages[0].start_time && stages[0].end_time) {
+    const startDateTime = new Date(`${stages[0].start_date}T${stages[0].start_time}`);
+    const endDateTime = new Date(`${stages[0].end_date}T${stages[0].end_time}`);
+    if (startDateTime >= endDateTime) {
+      errors.stage_end_time = "End date and time must be after start date and time";
+    }
+  }
+  return errors;
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +148,7 @@ const CreateEvent = () => {
     }
     dispatch(saveFormFields({ eventId, fields }));
   };
+
   const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -328,8 +359,11 @@ const CreateEvent = () => {
     });
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatTime = (timeString: string) => {
+    if (!timeString) return "Not set";
+    const [hours, minutes] = timeString.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hours), parseInt(minutes));
     return date.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "numeric",
@@ -383,27 +417,6 @@ const CreateEvent = () => {
                       <path d="M3 10h18"></path>
                     </svg>
                     <span>{formatDate(formData.start_date)}</span>
-                  </div>
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="lucide lucide-clock h-4 w-4 mr-2 text-primary"
-                    >
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
-                    <span>
-                      {formatTime(formData.start_date)} -{" "}
-                      {formatTime(formData.end_date)}
-                    </span>
                   </div>
                   <div className="flex items-center text-sm text-muted-foreground">
                     <svg
@@ -503,9 +516,9 @@ const CreateEvent = () => {
                       <h3 className="text-sm font-medium">Date and Time</h3>
                       <p className="text-sm text-muted-foreground">
                         {formatDate(formData.start_date)}
-                        <br />
-                        {formatTime(formData.start_date)} -{" "}
-                        {formatTime(formData.end_date)}
+                        {formData.start_time && formData.end_time
+                          ? `, ${formatTime(formData.start_time)} - ${formatTime(formData.end_time)}`
+                          : ''}
                       </p>
                     </div>
                     <div>
@@ -760,6 +773,7 @@ const CreateEvent = () => {
                         error={(formData as any).errors?.description}
                       />
                     </div>
+
                     <div className="space-y-4">
                       <div className="flex justify-between items-center">
                         <h3 className="text-lg font-semibold">Event Stages</h3>
@@ -775,9 +789,9 @@ const CreateEvent = () => {
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                             className="lucide lucide-plus mr-1 h-4 w-4"
                           >
                             <path d="M5 12h14"></path>
@@ -812,9 +826,9 @@ const CreateEvent = () => {
                                     viewBox="0 0 24 24"
                                     fill="none"
                                     stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
                                     className="h-5 w-5"
                                   >
                                     <path d="M3 6h18" />
@@ -895,6 +909,9 @@ const CreateEvent = () => {
                                     )
                                   }
                                 />
+                                {formData.errors?.stage_start_date && index === 0 && (
+                                  <p className="text-sm text-red-500">{formData.errors.stage_start_date}</p>
+                                )}
                               </div>
 
                               <div className="space-y-2">
@@ -919,6 +936,9 @@ const CreateEvent = () => {
                                     )
                                   }
                                 />
+                                {formData.errors?.stage_start_time && index === 0 && (
+                                  <p className="text-sm text-red-500">{formData.errors.stage_start_time}</p>
+                                )}
                               </div>
 
                               <div className="space-y-2">
@@ -943,6 +963,12 @@ const CreateEvent = () => {
                                     )
                                   }
                                 />
+                                {formData.errors?.stage_end_date && index === 0 && (
+                                  <p className="text-sm text-red-500">{formData.errors.stage_end_date}</p>
+                                )}
+                                {formData.errors?.start_end_date_same && index === 0 && (
+                                  <p className="text-sm text-red-500">{formData.errors.start_end_date_same}</p>
+                                )}
                               </div>
 
                               <div className="space-y-2">
@@ -967,6 +993,9 @@ const CreateEvent = () => {
                                     )
                                   }
                                 />
+                                {formData.errors?.stage_end_time && index === 0 && (
+                                  <p className="text-sm text-red-500">{formData.errors.stage_end_time}</p>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1391,7 +1420,6 @@ const CreateEvent = () => {
                                                 <button
                                                   className="text-gray-500 hover:text-gray-800"
                                                   title="Settings"
-                                                  // onClick={...} // implement if you want a settings modal
                                                 >
                                                   <svg
                                                     width="18"
@@ -1701,95 +1729,103 @@ const CreateEvent = () => {
                 <h2 className="text-xl font-bold mb-4">Add New Question</h2>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium leading-none">Label</label>
+                    <label className="text-sm font-medium leading-none">
+                      Label
+                    </label>
                     <input
                       type="text"
                       value={newQuestion.label}
                       onChange={(e) =>
-                        dispatch(updateNewQuestion({ label: e.target.value }))
+                        dispatch(
+                          updateNewQuestion({ label: e.target.value })
+                        )
                       }
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       placeholder="Enter question label"
                     />
                   </div>
-                  {(newQuestion.type === "radio" || newQuestion.type === "checkbox") && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium leading-none">Options</label>
-                      {newQuestion.options?.map((option, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={option}
-                            onChange={(e) =>
-                              dispatch(
-                                updateNewQuestionOption({
-                                  index: idx,
-                                  value: e.target.value,
-                                })
-                              )
-                            }
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            placeholder={`Option ${idx + 1}`}
-                          />
-                          {newQuestion.options && newQuestion.options.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => dispatch(removeNewQuestionOption(idx))}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <svg
-                                width="18"
-                                height="18"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                              >
-                                <line x1="6" y1="6" x2="18" y2="18" />
-                                <line x1="18" y1="6" x2="6" y2="18" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => dispatch(addNewQuestionOption())}
-                        className="text-primary hover:underline text-sm"
-                      >
-                        Add Option
-                      </button>
-                    </div>
-                  )}
+
+                  {(newQuestion.type === "radio" ||
+                    newQuestion.type === "checkbox") && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium leading-none">
+                          Options
+                        </label>
+                        {newQuestion.options?.map((option, optIdx) => (
+                          <div key={optIdx} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={option}
+                              onChange={(e) =>
+                                dispatch(
+                                  updateNewQuestionOption({
+                                    index: optIdx,
+                                    value: e.target.value,
+                                  })
+                                )
+                              }
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              placeholder={`Option ${optIdx + 1}`}
+                            />
+                            {newQuestion.options &&
+                              newQuestion.options.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    dispatch(removeNewQuestionOption(optIdx))
+                                  }
+                                  className="text-red-500 hover:text-red-700"
+                                >
+                                  <svg
+                                    width="18"
+                                    height="18"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                  >
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                  </svg>
+                                </button>
+                              )}
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => dispatch(addNewQuestionOption())}
+                          className="text-primary hover:underline text-sm"
+                        >
+                          Add Option
+                        </button>
+                      </div>
+                    )}
+
                   <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
                       checked={newQuestion.required}
                       onChange={(e) =>
-                        dispatch(updateNewQuestion({ required: e.target.checked }))
+                        dispatch(
+                          updateNewQuestion({ required: e.target.checked })
+                        )
                       }
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
                     />
-                    <label className="text-sm font-medium leading-none">Required</label>
+                    <label className="text-sm">Required</label>
                   </div>
-                </div>
-                <div className="flex justify-between mt-6">
-                  <button
-                    onClick={() => dispatch(setQuestionStep(1))}
-                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
-                  >
-                    Back
-                  </button>
-                  <div className="flex space-x-4">
+
+                  <div className="flex justify-end space-x-4">
                     <button
-                      onClick={() => dispatch(setShowQuestionModal(false))}
+                      onClick={() => dispatch(setQuestionStep(1))}
                       className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
                     >
-                      Cancel
+                      Back
                     </button>
                     <button
                       onClick={() => {
                         dispatch(addField(newQuestion));
                         dispatch(setShowQuestionModal(false));
+                        dispatch(setQuestionStep(1));
                         dispatch(
                           updateNewQuestion({
                             id: 0,
@@ -1799,10 +1835,8 @@ const CreateEvent = () => {
                             options: [""],
                           })
                         );
-                        dispatch(setQuestionStep(1));
                       }}
                       className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-                      disabled={!newQuestion.label || !newQuestion.type}
                     >
                       Add Question
                     </button>
