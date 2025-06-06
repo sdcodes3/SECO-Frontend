@@ -65,6 +65,7 @@ interface EventCreationState {
     is_virtual: boolean;
     stages: Stage[];
     errors?: Record<string, string>;
+    banner?: File | null; // Added to store the banner file
   };
   stages: Stage[];
   fields: FormField[];
@@ -116,6 +117,7 @@ const initialEventCreationState: EventCreationState = {
     is_virtual: false,
     stages: [],
     errors: {},
+    banner: null, // Initialize banner as null
   },
   stages: [
     {
@@ -183,6 +185,8 @@ export const fetchEvents = createAsyncThunk(
     }
   }
 );
+
+// Fetch an event by ID
 export const fetchEventById = createAsyncThunk(
   'event/fetchEventById',
   async (id: string, { rejectWithValue }) => {
@@ -192,7 +196,6 @@ export const fetchEventById = createAsyncThunk(
       return {
         ...event,
         stages: typeof event.stages === 'string' ? JSON.parse(event.stages) : event.stages,
-
       };
     } catch (err: any) {
       return rejectWithValue(
@@ -201,6 +204,8 @@ export const fetchEventById = createAsyncThunk(
     }
   }
 );
+
+// Fetch form fields
 export const fetchFormFields = createAsyncThunk(
   'event/fetchFormFields',
   async (eventId: string, { rejectWithValue }) => {
@@ -228,8 +233,6 @@ export const fetchFormFields = createAsyncThunk(
   }
 );
 
-// Fetch an event by ID
-
 // Create an event
 export const createEvent = createAsyncThunk(
   'event/createEvent',
@@ -238,6 +241,13 @@ export const createEvent = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
+      // Validate required fields including banner
+      if (!file) {
+        throw new Error('Banner is required');
+      }
+      if (!formData.website || !/^(https?:\/\/)?([\w-]+\.)+[\w-]{2,}(\/\S*)?$/.test(formData.website)) {
+        throw new Error('A valid website URL is required');
+      }
       if (formData.start_date && formData.start_time && formData.end_date && formData.end_time) {
         const startDateTime = new Date(`${formData.start_date}T${formData.start_time}`);
         const endDateTime = new Date(`${formData.end_date}T${formData.end_time}`);
@@ -270,14 +280,14 @@ export const createEvent = createAsyncThunk(
       formDataToSend.append('description', formattedData.description);
       formDataToSend.append('location_link', formattedData.location_link);
       formDataToSend.append('start_date', formattedData.start_date);
-      formDataToSend.append('start_time', formattedData.start_time);
+      formDataToSend.append('start_time', formattedData.start_time || '');
       formDataToSend.append('end_date', formattedData.end_date);
-      formDataToSend.append('end_time', formattedData.end_time);
+      formDataToSend.append('end_time', formattedData.end_time || '');
       formDataToSend.append('created_by', formattedData.created_by);
       formDataToSend.append('type', formattedData.type);
       formDataToSend.append('capacity', formattedData.capacity.toString());
       formDataToSend.append('website', formattedData.website);
-      formDataToSend.append('judges_emails', formattedData.judges_emails);
+      formDataToSend.append('judges_emails', formattedData.judges_emails || ''); // Keep judges_emails, default to empty string
       formDataToSend.append('is_virtual', formattedData.is_virtual.toString());
       formDataToSend.append('stages', formattedData.stages);
 
@@ -312,6 +322,13 @@ export const updateEvent = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
+      // Validate required fields including banner for updates
+      if (!file && !formData.banner) {
+        throw new Error('Banner is required');
+      }
+      if (!formData.website || !/^(https?:\/\/)?([\w-]+\.)+[\w-]{2,}(\/\S*)?$/.test(formData.website)) {
+        throw new Error('A valid website URL is required');
+      }
       if (formData.start_date && formData.start_time && formData.end_date && formData.end_time) {
         const startDateTime = new Date(`${formData.start_date}T${formData.start_time}`);
         const endDateTime = new Date(`${formData.end_date}T${formData.end_time}`);
@@ -344,14 +361,14 @@ export const updateEvent = createAsyncThunk(
       formDataToSend.append('description', formattedData.description);
       formDataToSend.append('location_link', formattedData.location_link);
       formDataToSend.append('start_date', formattedData.start_date);
-      formDataToSend.append('start_time', formattedData.start_time);
+      formDataToSend.append('start_time', formattedData.start_time || '');
       formDataToSend.append('end_date', formattedData.end_date);
-      formDataToSend.append('end_time', formattedData.end_time);
+      formDataToSend.append('end_time', formattedData.end_time || '');
       formDataToSend.append('created_by', formattedData.created_by);
       formDataToSend.append('type', formattedData.type);
       formDataToSend.append('capacity', formattedData.capacity.toString());
       formDataToSend.append('website', formattedData.website);
-      formDataToSend.append('judges_emails', formattedData.judges_emails);
+      formDataToSend.append('judges_emails', formattedData.judges_emails || ''); // Keep judges_emails, default to empty string
       formDataToSend.append('is_virtual', formattedData.is_virtual.toString());
       formDataToSend.append('stages', formattedData.stages);
 
@@ -410,6 +427,7 @@ export const saveFormFields = createAsyncThunk(
     }
   }
 );
+
 // Creating the event slice
 const eventSlice = createSlice({
   name: 'event',
@@ -475,6 +493,7 @@ const eventSlice = createSlice({
       state.creation.error = action.payload;
     },
 
+    // Updated to include banner in formData
     setFormData: (state, action: PayloadAction<Partial<EventCreationState['formData']>>) => {
       state.creation.formData = { ...state.creation.formData, ...action.payload };
     },
@@ -489,6 +508,11 @@ const eventSlice = createSlice({
 
     setBannerPreview: (state, action: PayloadAction<string | null>) => {
       state.creation.bannerPreview = action.payload;
+    },
+
+    // Added to handle banner file in formData
+    setBannerFile: (state, action: PayloadAction<File | null>) => {
+      state.creation.formData.banner = action.payload;
     },
 
     addStage: (state) => {
@@ -578,6 +602,7 @@ const eventSlice = createSlice({
         id: state.creation.fields.length + 1,
       });
     },
+
     updateField: (
       state,
       action: PayloadAction<{ index: number; updates: Partial<FormField> }>
@@ -706,6 +731,7 @@ const eventSlice = createSlice({
           is_virtual: event.is_virtual || false,
           stages: parsedStages,
           errors: {},
+          banner: null, // Initialize banner as null for fetched event
         };
         state.creation.stages = parsedStages.length > 0
           ? parsedStages.map((stage: any, index: number) => ({
@@ -809,6 +835,7 @@ export const {
   setCreatedBy,
   setStep,
   setBannerPreview,
+  setBannerFile, // Added to export the new reducer
   addStage,
   removeStage,
   updateStage,

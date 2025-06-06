@@ -1,12 +1,16 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../storage/store';
+import { useDispatch, useSelector } from "react-redux";
+import Input from "@/components/UI/Input";
+import { toast } from "sonner";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import {
   setFormData,
   setCreatedBy,
   setStep,
   setBannerPreview,
+  setBannerFile,
   addStage,
   removeStage,
   updateStage,
@@ -23,13 +27,31 @@ import {
   duplicateField,
   setActiveTab,
   updatePreviewFormData,
+  resetCreationState,
   createEvent,
   saveFormFields,
-  clearMessages,
-  resetCreationState,
-  setError,
-} from '../slices/EventSlice';
-import Input from "@/components/UI/Input";
+} from "../slices/EventSlice";
+import { RootState, AppDispatch } from "../storage/store";
+
+interface Stage {
+  id: string;
+  name: string;
+  description: string;
+  start_date: string;
+  start_time: string;
+  end_date: string;
+  end_time: string;
+}
+
+interface FormField {
+  id: number;
+  label: string;
+  type: string;
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
+  description?: string;
+}
 
 const CreateEvent = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -52,46 +74,36 @@ const CreateEvent = () => {
     success,
   } = useSelector((state: RootState) => state.event.creation);
 
-  // Sync event start_date and end_date with first stage's dates
-  useEffect(() => {
-    if (stages.length > 0) {
-      dispatch(
-        setFormData({
-          start_date: stages[0].start_date || new Date().toISOString().split('T')[0],
-          end_date: stages[0].end_date || new Date().toISOString().split('T')[0],
-          start_time: stages[0].start_time || '', // Sync start_time
-          end_time: stages[0].end_time || '',     // Sync end_time
-        })
-      );
-    }
-  }, [
-    stages[0]?.start_date,
-    stages[0]?.end_date,
-    stages[0]?.start_time,
-    stages[0]?.end_time,
-    dispatch,
-  ]);
+  const [errorFields, setErrorFields] = useState({
+    title: "",
+    description: "",
+    start_date: "",
+    end_date: "",
+    location_link: "",
+    type: "",
+    capacity: "",
+    website: "",
+    banner: "",
+  });
 
   useEffect(() => {
+    // Get user data from localStorage
     const userData = localStorage.getItem("user");
     if (userData) {
       const user = JSON.parse(userData);
       dispatch(setCreatedBy(user.id));
     }
-
+    // Cleanup on unmount
     return () => {
-      dispatch(clearMessages());
+      dispatch(resetCreationState());
     };
   }, [dispatch]);
 
-  useEffect(() => {
-    if (error || success) {
-      const timer = setTimeout(() => {
-        dispatch(clearMessages());
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [error, success, dispatch]);
+  const isSaveDisabled =
+    !newQuestion.label.trim() ||
+    ((newQuestion.type === "radio" || newQuestion.type === "checkbox") &&
+      (!newQuestion.options?.length ||
+        newQuestion.options.some((opt: string) => !opt.trim())));
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -108,63 +120,151 @@ const CreateEvent = () => {
   };
 
   const validateForm = () => {
-  const errors: Record<string, string> = {};
-  if (!formData.title.trim()) errors.title = "Title is required";
-  if (!formData.description.trim()) errors.description = "Description is required";
-  if (!formData.location_link.trim()) errors.location_link = "Location is required";
-  if (!formData.type) errors.type = "Type is required";
-  if (stages.length === 0 || !stages[0].start_date) errors.stage_start_date = "Stage 1 start date is required";
-  if (stages.length === 0 || !stages[0].end_date) errors.stage_end_date = "Stage 1 end date is required";
-  if (stages.length === 0 || !stages[0].start_time) errors.stage_start_time = "Stage 1 start time is required";
-  if (stages.length === 0 || !stages[0].end_time) errors.stage_end_time = "Stage 1 end time is required";
-  if (stages[0].start_date === stages[0].end_date) errors.start_end_date_same = "start date and end data cannot be same";
-  if (stages[0].start_date && stages[0].end_date && stages[0].start_time && stages[0].end_time) {
-    const startDateTime = new Date(`${stages[0].start_date}T${stages[0].start_time}`);
-    const endDateTime = new Date(`${stages[0].end_date}T${stages[0].end_time}`);
-    if (startDateTime >= endDateTime) {
-      errors.stage_end_time = "End date and time must be after start date and time";
-    }
-  }
-  return errors;
-};
+    return {
+      title: formData.title.trim() ? "" : "Title is required",
+      description: formData.description.trim() ? "" : "Description is required",
+      start_date: stages[0].start_date ? "" : "Start date is required",
+      end_date: stages[0].end_date ? "" : "End date is required",
+      location_link: formData.location_link.trim()
+        ? ""
+        : "Location is required",
+      type: formData.type ? "" : "Type is required",
+      capacity:
+        !formData.capacity || Number(formData.capacity) <= 0
+          ? "Capacity must be positive"
+          : "",
+      website: formData.website.trim()
+        ? isValidWebsite(formData.website)
+          ? ""
+          : "Add valid website"
+        : "Add valid website",
+      banner: bannerPreview?.trim() ? "" : "Banner is required",
+    };
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors = validateForm();
-    if (Object.keys(errors).length > 0) {
-      dispatch(setFormData({ errors }));
+    const isError = Object.values(errors).some((value) => value !== "");
+    if (isError) {
+      toast.error("Please fill all required fields");
+      setErrorFields(errors);
       return;
     }
 
-    const bannerInput = document.getElementById("event-banner-input") as HTMLInputElement;
-    const file = bannerInput?.files?.[0] || null;
-    dispatch(createEvent({ formData, stages, file }));
+    try {
+      // Dispatch createEvent action
+      const bannerInput = document.getElementById(
+        "event-banner-input"
+      ) as HTMLInputElement;
+      const file = bannerInput?.files?.[0] || null;
+
+      await dispatch(
+        createEvent({
+          formData,
+          stages,
+          file,
+        })
+      ).unwrap();
+
+      toast.success("Event created successfully!");
+    } catch (err: any) {
+      console.error("Error creating event:", err);
+      toast.error(err || "Failed to create event. Please try again.");
+    }
   };
 
+  // const handleAddField = () => {
+  //   dispatch(setShowQuestionModal(true));
+  //   dispatch(setQuestionStep(1));
+  //   dispatch(setNewQuestionType(null));
+  //   dispatch(
+  //     updateNewQuestion({
+  //       label: "",
+  //       type: "",
+  //       required: false,
+  //       options: [""],
+  //     })
+  //   );
+  // };
+
   const handleSaveForm = async () => {
-    if (!eventId) {
-      dispatch(setError("Event ID is missing. Please create the event first."));
-      return;
+    try {
+      if (!eventId) {
+        toast.error("Event ID is missing. Please create the event first.");
+        return;
+      }
+
+      const userData = localStorage.getItem("user");
+      if (!userData) {
+        toast.error("Please login to save form");
+        return;
+      }
+
+      await dispatch(
+        saveFormFields({
+          eventId,
+          fields,
+        })
+      ).unwrap();
+
+      toast.success("Form fields saved successfully!");
+    } catch (error) {
+      toast.error("Failed to save form fields. Please try again.");
     }
-    dispatch(saveFormFields({ eventId, fields }));
   };
 
   const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       dispatch(setBannerPreview(URL.createObjectURL(file)));
+      dispatch(setBannerFile(file));
     }
   };
 
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+
+    if (name === "website" && !isValidWebsite(value)) {
+      setErrorFields((prev) => ({
+        ...prev,
+        website: "Please enter a valid website URL.",
+      }));
+    } else {
+      setErrorFields((prev) => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const isValidWebsite = (url: string) =>
+    /^(https?:\/\/)?([\w-]+\.)+[\w-]{2,}(\/\S*)?$/.test(url);
+
   const handleRemoveBanner = () => {
     dispatch(setBannerPreview(null));
-    (document.getElementById("event-banner-input") as HTMLInputElement).value = "";
+    dispatch(setBannerFile(null));
+    (document.getElementById("event-banner-input") as HTMLInputElement).value =
+      "";
   };
+
+  // const handleStageChange = (
+  //   index: number,
+  //   field: keyof Stage,
+  //   value: string
+  // ) => {
+  //   dispatch(updateStage({ index, field, value }));
+  // };
+
+  // const handlePreviewInputChange = (
+  //   fieldId: string,
+  //   value: any,
+  //   required: boolean
+  // ) => {
+  //   dispatch(updatePreviewFormData({ fieldId, value, required }));
+  // };
 
   const renderPreviewForm = () => {
     return (
       <div className="space-y-6">
-        {fields.map((field) => (
+        {fields.map((field: FormField) => (
           <div key={field.id} className="space-y-2">
             <label className="text-sm font-medium leading-none">
               {field.label}
@@ -176,6 +276,7 @@ const CreateEvent = () => {
                 type="text"
                 className={`w-full rounded-md border ${previewErrors[field.id] ? "border-red-500" : "border-input"
                   } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                placeholder={field.placeholder || "Enter your answer"}
                 value={previewFormData[field.id] || ""}
                 onChange={(e) =>
                   dispatch(
@@ -193,6 +294,7 @@ const CreateEvent = () => {
               <textarea
                 className={`w-full rounded-md border ${previewErrors[field.id] ? "border-red-500" : "border-input"
                   } bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-h-[100px]`}
+                placeholder={field.placeholder || "Enter your answer"}
                 value={previewFormData[field.id] || ""}
                 onChange={(e) =>
                   dispatch(
@@ -359,11 +461,8 @@ const CreateEvent = () => {
     });
   };
 
-  const formatTime = (timeString: string) => {
-    if (!timeString) return "Not set";
-    const [hours, minutes] = timeString.split(':');
-    const date = new Date();
-    date.setHours(parseInt(hours), parseInt(minutes));
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
     return date.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "numeric",
@@ -429,6 +528,27 @@ const CreateEvent = () => {
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
+                      className="lucide lucide-clock h-4 w-4 mr-2 text-primary"
+                    >
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span>
+                      {formatTime(formData.start_date)} -{" "}
+                      {formatTime(formData.end_date)}
+                    </span>
+                  </div>
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                       className="lucide lucide-map-pin h-4 w-4 mr-2 text-primary"
                     >
                       <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
@@ -445,7 +565,7 @@ const CreateEvent = () => {
               {stages.length > 0 && (
                 <div className="mb-8">
                   <div className="flex flex-col gap-6">
-                    {stages.map((stage, idx) => {
+                    {stages.map((stage: Stage, idx: number) => {
                       const dateObj = new Date(stage.start_date);
                       const day = dateObj.getDate();
                       const month = dateObj.toLocaleString("en-US", {
@@ -516,9 +636,9 @@ const CreateEvent = () => {
                       <h3 className="text-sm font-medium">Date and Time</h3>
                       <p className="text-sm text-muted-foreground">
                         {formatDate(formData.start_date)}
-                        {formData.start_time && formData.end_time
-                          ? `, ${formatTime(formData.start_time)} - ${formatTime(formData.end_time)}`
-                          : ''}
+                        <br />
+                        {formatTime(formData.start_date)} -{" "}
+                        {formatTime(formData.end_date)}
                       </p>
                     </div>
                     <div>
@@ -584,28 +704,6 @@ const CreateEvent = () => {
         {step === 1 ? (
           <div className="p-6">
             <div className="max-w-3xl mx-auto">
-              {error && (
-                <div className="mb-4 p-4 rounded-md bg-red-50 border border-red-200">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <svg
-                        className="h-5 w-5 text-red-400"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-red-700">{error}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
               {success && (
                 <div className="mb-4 p-4 rounded-md bg-green-50 border border-green-200">
                   <div className="flex">
@@ -648,15 +746,16 @@ const CreateEvent = () => {
                         type="text"
                         placeholder="Enter event title"
                         description="A clear, concise title for your event"
-                        error={(formData as any).errors?.title}
+                        error={errorFields.title}
+                        required={true}
                       />
                     </div>
                     <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        htmlFor=":rc1:-form-item"
-                      >
-                        Event Banner
+                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        Event Banner <span className="text-red-500">*</span>
+                        <div className="text-sm text-red-500 font-normal">
+                          {errorFields.banner}
+                        </div>
                       </label>
                       <div
                         className="border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center relative bg-gray-100 min-h-[180px] cursor-pointer group transition"
@@ -672,7 +771,7 @@ const CreateEvent = () => {
                               alt="Event Banner Preview"
                               className="object-contain max-h-48 w-full rounded-lg"
                             />
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition">
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition rounded-lg">
                               <button
                                 type="button"
                                 className="bg-white text-black px-3 py-1 rounded shadow mr-2 flex items-center"
@@ -757,6 +856,7 @@ const CreateEvent = () => {
                           accept="image/png, image/jpeg"
                           className="hidden"
                           onChange={handleBannerChange}
+                          required={true}
                         />
                       </div>
                     </div>
@@ -770,17 +870,17 @@ const CreateEvent = () => {
                         type="textarea"
                         placeholder="Describe your event..."
                         description="Provide details about your event"
-                        error={(formData as any).errors?.description}
+                        error={errorFields.description}
+                        required={true}
                       />
                     </div>
-
                     <div className="space-y-4">
                       <div className="flex justify-between items-center">
                         <h3 className="text-lg font-semibold">Event Stages</h3>
                         <button
                           type="button"
                           onClick={() => dispatch(addStage())}
-                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -802,7 +902,7 @@ const CreateEvent = () => {
                       </div>
 
                       <div className="space-y-4">
-                        {stages.map((stage, index) => (
+                        {stages.map((stage: Stage, index: number) => (
                           <div
                             key={stage.id}
                             className="rounded-lg border bg-card p-6"
@@ -810,7 +910,8 @@ const CreateEvent = () => {
                             <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">
-                                  Stage {index + 1}
+                                  Stage {index + 1}{" "}
+                                  <span className="text-red-500 ml-1">*</span>
                                 </span>
                               </div>
                               {stages.length > 1 && (
@@ -887,115 +988,221 @@ const CreateEvent = () => {
                                 />
                               </div>
 
-                              <div className="space-y-2">
+                              <div className="space-y-2 flex flex-col">
                                 <label
                                   className="text-sm font-medium leading-none"
                                   htmlFor={`stage_start_date_${index}`}
                                 >
                                   Start Date
                                 </label>
-                                <input
-                                  type="date"
-                                  id={`stage_start_date_${index}`}
-                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                  value={stage.start_date}
-                                  onChange={(e) =>
-                                    dispatch(
-                                      updateStage({
-                                        index,
-                                        field: "start_date",
-                                        value: e.target.value,
-                                      })
-                                    )
+                                <DatePicker
+                                  selected={
+                                    stage.start_date
+                                      ? new Date(stage.start_date + "T00:00:00")
+                                      : null
                                   }
+                                  onChange={(date: Date | null) => {
+                                    if (date) {
+                                      const year = date.getFullYear();
+                                      const month = String(date.getMonth() + 1).padStart(2, "0");
+                                      const day = String(date.getDate()).padStart(2, "0");
+                                      const formattedDate = `${year}-${month}-${day}`;
+
+                                      dispatch(
+                                        updateStage({
+                                          index,
+                                          field: "start_date",
+                                          value: formattedDate,
+                                        })
+                                      );
+
+                                      if (stage.end_date) {
+                                        const currentEndDate = new Date(stage.end_date + "T00:00:00");
+                                        const selectedDate = new Date(
+                                          date.getFullYear(),
+                                          date.getMonth(),
+                                          date.getDate()
+                                        );
+
+                                        if (currentEndDate <= selectedDate) {
+                                          dispatch(
+                                            updateStage({
+                                              index,
+                                              field: "end_date",
+                                              value: "",
+                                            })
+                                          );
+                                        }
+                                      }
+                                    }
+                                  }}
+
+                                  className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm w-full cursor-pointer ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                  dateFormat="MMMM d, yyyy"
+                                  placeholderText="Select a date"
+                                  popperPlacement="bottom-start"
+                                  onKeyDown={(e) => e.preventDefault()}
+                                  onFocus={(e) => e.target.blur()}
                                 />
-                                {formData.errors?.stage_start_date && index === 0 && (
-                                  <p className="text-sm text-red-500">{formData.errors.stage_start_date}</p>
-                                )}
                               </div>
 
-                              <div className="space-y-2">
+                              <div className="space-y-2 flex flex-col">
                                 <label
                                   className="text-sm font-medium leading-none"
                                   htmlFor={`stage_start_time_${index}`}
                                 >
                                   Start Time
                                 </label>
-                                <input
-                                  type="time"
-                                  id={`stage_start_time_${index}`}
-                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                  value={stage.start_time}
-                                  onChange={(e) =>
+                                <DatePicker
+                                  selected={
+                                    stages[index]?.start_time
+                                      ? new Date(
+                                        `1970-01-01T${stages[index].start_time}:00`
+                                      )
+                                      : null
+                                  }
+                                  onChange={(date: Date | null) => {
+                                    const time = date ? date.toTimeString().slice(0, 5) : "";
                                     dispatch(
                                       updateStage({
                                         index,
                                         field: "start_time",
-                                        value: e.target.value,
+                                        value: time,
                                       })
-                                    )
-                                  }
+                                    );
+                                  }}
+
+                                  showTimeSelect
+                                  showTimeSelectOnly
+                                  timeIntervals={15}
+                                  timeCaption="Time"
+                                  dateFormat="HH:mm"
+                                  placeholderText="Select Start Time"
+                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                                  onKeyDown={(e) => e.preventDefault()}
+                                  onFocus={(e) => e.target.blur()}
                                 />
-                                {formData.errors?.stage_start_time && index === 0 && (
-                                  <p className="text-sm text-red-500">{formData.errors.stage_start_time}</p>
-                                )}
                               </div>
 
-                              <div className="space-y-2">
+                              <div className="space-y-2 flex flex-col">
                                 <label
                                   className="text-sm font-medium leading-none"
                                   htmlFor={`stage_end_date_${index}`}
                                 >
                                   End Date
                                 </label>
-                                <input
-                                  type="date"
-                                  id={`stage_end_date_${index}`}
-                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                  value={stage.end_date}
-                                  onChange={(e) =>
+                                <DatePicker
+                                  minDate={
+                                    stage.start_date
+                                      ? (() => {
+                                        const startDate = new Date(
+                                          stage.start_date + "T00:00:00"
+                                        );
+                                        const minDate = new Date(
+                                          startDate.getFullYear(),
+                                          startDate.getMonth(),
+                                          startDate.getDate() + 1
+                                        );
+                                        return minDate;
+                                      })()
+                                      : undefined
+                                  }
+                                  selected={
+                                    stage.end_date
+                                      ? new Date(stage.end_date + "T00:00:00")
+                                      : null
+                                  }
+                                  onChange={(date: Date | null) => {
+                                    if (!date) return;
+
+                                    const startDate = stage.start_date
+                                      ? new Date(stage.start_date + "T00:00:00")
+                                      : null;
+
+                                    if (!startDate) {
+                                      alert("Please select a start date first.");
+                                      return;
+                                    }
+
+                                    const year = date.getFullYear();
+                                    const month = String(date.getMonth() + 1).padStart(2, "0");
+                                    const day = String(date.getDate()).padStart(2, "0");
+                                    const selectedEndDate = `${year}-${month}-${day}`;
+
+                                    const startDateLocal = new Date(
+                                      startDate.getFullYear(),
+                                      startDate.getMonth(),
+                                      startDate.getDate()
+                                    );
+                                    const endDateLocal = new Date(
+                                      date.getFullYear(),
+                                      date.getMonth(),
+                                      date.getDate()
+                                    );
+
+                                    const minEndDate = new Date(startDateLocal);
+                                    minEndDate.setDate(minEndDate.getDate() + 1);
+
+                                    if (endDateLocal < minEndDate) {
+                                      alert("End date must be at least one day after the start date.");
+                                      return;
+                                    }
+
                                     dispatch(
                                       updateStage({
                                         index,
                                         field: "end_date",
-                                        value: e.target.value,
+                                        value: selectedEndDate,
                                       })
-                                    )
-                                  }
+                                    );
+                                  }}
+
+                                  placeholderText="Select End Date"
+                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                                  dateFormat="MMMM d, yyyy"
+                                  onKeyDown={(e) => e.preventDefault()}
+                                  onFocus={(e) => e.target.blur()}
+                                  disabled={!stage.start_date}
                                 />
-                                {formData.errors?.stage_end_date && index === 0 && (
-                                  <p className="text-sm text-red-500">{formData.errors.stage_end_date}</p>
-                                )}
-                                {formData.errors?.start_end_date_same && index === 0 && (
-                                  <p className="text-sm text-red-500">{formData.errors.start_end_date_same}</p>
-                                )}
                               </div>
 
-                              <div className="space-y-2">
+                              <div className="space-y-2 flex flex-col">
                                 <label
                                   className="text-sm font-medium leading-none"
                                   htmlFor={`stage_end_time_${index}`}
                                 >
                                   End Time
                                 </label>
-                                <input
-                                  type="time"
-                                  id={`stage_end_time_${index}`}
-                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                  value={stage.end_time}
-                                  onChange={(e) =>
+                                <DatePicker
+                                  selected={
+                                    stages[index]?.end_time
+                                      ? new Date(
+                                        `1970-01-01T${stages[index].end_time}:00`
+                                      )
+                                      : null
+                                  }
+                                  onChange={(date: Date | null) => {
+                                    const time = date ? date.toTimeString().slice(0, 5) : "";
                                     dispatch(
                                       updateStage({
                                         index,
                                         field: "end_time",
-                                        value: e.target.value,
+                                        value: time,
                                       })
-                                    )
-                                  }
+                                    );
+                                  }}
+
+                                  showTimeSelect
+                                  showTimeSelectOnly
+                                  timeIntervals={15}
+                                  timeCaption="Time"
+                                  dateFormat="HH:mm"
+                                  placeholderText="Select End Time"
+                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                                  onKeyDown={(e) => e.preventDefault()}
+                                  onFocus={(e) => e.target.blur()}
+                                  disabled={!stage.end_date}
                                 />
-                                {formData.errors?.stage_end_time && index === 0 && (
-                                  <p className="text-sm text-red-500">{formData.errors.stage_end_time}</p>
-                                )}
                               </div>
                             </div>
                           </div>
@@ -1003,42 +1210,73 @@ const CreateEvent = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium leading-none"
-                        htmlFor=":rc9:-form-item"
-                      >
-                        Event Type
+                      <label className="text-sm font-medium leading-none">
+                        Event Type<span className="text-red-500 ml-1">*</span>
                       </label>
-                      <select
-                        className="w-full rounded-md border px-3 py-2"
-                        name="type"
-                        value={formData.type}
-                        onChange={handleInputChange}
-                      >
-                        <option value="networking">Networking</option>
-                        <option value="pitch">Pitch</option>
-                        <option value="workshop">Workshop</option>
-                        <option value="hackathon">Hackathon</option>
-                        <option value="meetup">Meetup</option>
-                        <option value="conference">Conference</option>
-                        <option value="other">Other</option>
-                      </select>
+                      <div className="space-y-1">
+                        <div className="relative w-full">
+                          <select
+                            id="type"
+                            name="type"
+                            value={formData.type}
+                            onChange={handleInputChange}
+                            className="w-full appearance-none rounded-xl border border-gray-300 bg-gray-50 px-4 py-2 pr-10 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="networking">Networking</option>
+                            <option value="pitch">Pitch</option>
+                            <option value="workshop">Workshop</option>
+                            <option value="hackathon">Hackathon</option>
+                            <option value="meetup">Meetup</option>
+                            <option value="conference">Conference</option>
+                            <option value="other">Other</option>
+                          </select>
+
+                          <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-600 justify-center">
+                            <svg
+                              className="h-4 w-4"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M5.23 7.21a.75.75 0 011.06.02L10 11.293l3.71-4.06a.75.75 0 111.1 1.02l-4.25 4.65a.75.75 0 01-1.1 0L5.25 8.27a.75.75 0 01-.02-1.06z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Input
-                        value={formData.capacity.toString()}
-                        handleChange={handleInputChange}
-                        label="Capacity"
-                        name="capacity"
+                      <label
+                        htmlFor="capacity"
+                        className="text-sm font-medium text-gray-900"
+                      >
+                        Capacity <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <input
                         type="number"
+                        id="capacity"
+                        name="capacity"
+                        value={formData.capacity}
+                        onChange={handleInputChange}
+                        min={0}
                         placeholder="Maximum number of attendees"
-                        description="Leave empty for unlimited capacity"
-                        error={(formData as any).errors?.capacity?.toString()}
+                        required
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-gray-900 placeholder:text-muted-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       />
+                      <p className="text-xs text-muted-foreground">
+                        Leave empty for unlimited capacity
+                      </p>
+                      {errorFields.capacity && Number(formData.capacity) < 0 && (
+                        <p className="text-sm text-red-500">
+                          {errorFields.capacity}
+                        </p>
+                      )}
                     </div>
 
-                    <div className="flex flex-row items-start space-x-3 border p-4 rounded-md">
+                    <label className="flex flex-row items-start space-x-3 border p-4 rounded-md cursor-pointer">
                       <input
                         type="checkbox"
                         name="is_virtual"
@@ -1048,53 +1286,98 @@ const CreateEvent = () => {
                         className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                       />
                       <div className="space-y-1 leading-none">
-                        <label
-                          className="text-sm font-medium leading-none"
-                          htmlFor="is_virtual"
-                        >
+                        <span className="text-sm font-medium leading-none">
                           Virtual Event
-                        </label>
+                        </span>
                         <p className="text-sm text-muted-foreground">
                           Check this if your event will be held online
                         </p>
                       </div>
-                    </div>
+                    </label>
 
                     <div className="space-y-2">
-                      <Input
-                        value={formData.location_link}
-                        handleChange={handleInputChange}
-                        label="Location"
-                        name="location_link"
+                      <label
+                        htmlFor="location_link"
+                        className="text-sm font-medium text-gray-900"
+                      >
+                        Location<span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <input
                         type="text"
-                        placeholder="Event venue or address"
-                        error={(formData as any).errors?.location_link}
+                        name="location_link"
+                        id="location_link"
+                        value={formData.location_link}
+                        onChange={handleInputChange}
+                        onBlur={() => {
+                          const isVirtual = formData.is_virtual;
+                          const value = formData.location_link.trim();
+                          const isZoomLink =
+                            /^https:\/\/(.*\.)?zoom\.us\/(j|my)\/[a-zA-Z0-9?&=]+$/.test(
+                              value
+                            );
+
+                          if (isVirtual && !isZoomLink) {
+                            setErrorFields((prev) => ({
+                              ...prev,
+                              location_link:
+                                "Please provide a valid Zoom meeting link",
+                            }));
+                          } else if (!isVirtual && value.length < 5) {
+                            setErrorFields((prev) => ({
+                              ...prev,
+                              location_link: "Please enter a valid address",
+                            }));
+                          } else {
+                            setErrorFields((prev) => ({
+                              ...prev,
+                              location_link: "",
+                            }));
+                          }
+                        }}
+                        placeholder={
+                          formData.is_virtual
+                            ? "https://zoom.us/..."
+                            : "Event venue or address"
+                        }
+                        required
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-gray-900 placeholder:text-muted-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       />
-                      {formData.is_virtual && (
-                        <p className="text-sm text-muted-foreground">
-                          Please provide a valid Zoom meeting link
+                      <p className="text-sm text-muted-foreground">
+                        {formData.is_virtual
+                          ? "Please provide a valid Zoom meeting link"
+                          : "Enter the event venue or address"}
+                      </p>
+                      {errorFields.location_link && (
+                        <p className="text-sm text-red-500">
+                          {errorFields.location_link}
                         </p>
                       )}
                     </div>
+
                     <div className="space-y-2">
-                      <Input
-                        value={formData.website}
-                        handleChange={handleInputChange}
-                        label="Website"
+                      <label
+                        htmlFor="website"
+                        className="text-sm font-medium text-gray-900"
+                      >
+                        Website <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="website"
                         name="website"
-                        type="text"
+                        value={formData.website}
+                        onChange={handleInputChange}
+                        onBlur={handleBlur}
                         placeholder="https://example.com"
+                        required
+                        pattern="https?://.+"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-gray-900 placeholder:text-muted-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Input
-                        value={formData.judges_emails}
-                        handleChange={handleInputChange}
-                        label="Judges' Emails"
-                        name="judges_emails"
-                        type="text"
-                        placeholder="Enter email addresses separated by commas"
-                      />
+                      {errorFields.website && (
+                        <p className="text-sm text-red-500">
+                          {errorFields.website}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex justify-end space-x-4">
@@ -1109,14 +1392,7 @@ const CreateEvent = () => {
                         onClick={handleSubmit}
                         disabled={loading}
                       >
-                        {loading ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Creating...
-                          </>
-                        ) : (
-                          "Continue"
-                        )}
+                        {loading ? "Submitting..." : "Continue"}
                       </button>
                     </div>
                   </form>
@@ -1304,7 +1580,7 @@ const CreateEvent = () => {
                                           form.
                                         </div>
                                       ) : (
-                                        fields.map((field, idx) => (
+                                        fields.map((field: FormField, idx: number) => (
                                           <div
                                             key={field.id}
                                             className="rounded-lg border p-6 mb-4 bg-white shadow flex flex-col gap-2"
@@ -1342,7 +1618,7 @@ const CreateEvent = () => {
                                                   <input
                                                     type="checkbox"
                                                     checked={field.required}
-                                                    onChange={(e) =>
+                                                    onChange={(e) => {
                                                       dispatch(
                                                         updateField({
                                                           index: idx,
@@ -1351,8 +1627,8 @@ const CreateEvent = () => {
                                                               e.target.checked,
                                                           },
                                                         })
-                                                      )
-                                                    }
+                                                      );
+                                                    }}
                                                     className="accent-blue-600"
                                                   />
                                                   <span className="text-sm">
@@ -1438,164 +1714,120 @@ const CreateEvent = () => {
                                                 </button>
                                               </div>
                                             </div>
-                                            <div className="space-y-2">
-                                              <label className="text-sm font-medium leading-none">
-                                                Label
-                                              </label>
-                                              <input
-                                                type="text"
-                                                value={field.label}
-                                                onChange={(e) =>
-                                                  dispatch(
-                                                    updateField({
-                                                      index: idx,
-                                                      updates: {
-                                                        label: e.target.value,
-                                                      },
-                                                    })
-                                                  )
-                                                }
-                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                                placeholder="Enter field label"
-                                              />
-                                            </div>
-                                            {(field.type === "radio" ||
-                                              field.type === "checkbox") && (
-                                                <div className="space-y-2">
-                                                  <label className="text-sm font-medium leading-none">
-                                                    Options
-                                                  </label>
-                                                  {field.options?.map(
-                                                    (option, optIdx) => (
-                                                      <div
-                                                        key={optIdx}
-                                                        className="flex items-center gap-2"
-                                                      >
-                                                        <input
-                                                          type="text"
-                                                          value={option}
-                                                          onChange={(e) =>
-                                                            dispatch(
-                                                              updateField({
-                                                                index: idx,
-                                                                updates: {
-                                                                  options: field.options?.map(
-                                                                    (opt, i) =>
-                                                                      i === optIdx
-                                                                        ? e.target
-                                                                          .value
-                                                                        : opt
-                                                                  ),
-                                                                },
-                                                              })
-                                                            )
-                                                          }
-                                                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                                          placeholder={`Option ${optIdx + 1
-                                                            }`}
-                                                        />
-                                                        {field.options &&
-                                                          field.options.length >
-                                                          1 && (
-                                                            <button
-                                                              type="button"
-                                                              onClick={() =>
-                                                                dispatch(
-                                                                  updateField({
-                                                                    index: idx,
-                                                                    updates: {
-                                                                      options:
-                                                                        field.options?.filter(
-                                                                          (
-                                                                            _,
-                                                                            i
-                                                                          ) =>
-                                                                            i !==
-                                                                            optIdx
-                                                                        ),
-                                                                    },
-                                                                  })
-                                                                )
-                                                              }
-                                                              className="text-red-500 hover:text-red-700"
-                                                            >
-                                                              <svg
-                                                                width="18"
-                                                                height="18"
-                                                                fill="none"
-                                                                stroke="currentColor"
-                                                                strokeWidth={2}
-                                                              >
-                                                                <line
-                                                                  x1="6"
-                                                                  y1="6"
-                                                                  x2="18"
-                                                                  y2="18"
-                                                                />
-                                                                <line
-                                                                  x1="18"
-                                                                  y1="6"
-                                                                  x2="6"
-                                                                  y2="18"
-                                                                />
-                                                              </svg>
-                                                            </button>
-                                                          )}
-                                                      </div>
-                                                    )
-                                                  )}
-                                                  <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                      dispatch(
-                                                        updateField({
-                                                          index: idx,
-                                                          updates: {
-                                                            options: [
-                                                              ...(field.options ||
-                                                                []),
-                                                              "",
-                                                            ],
-                                                          },
-                                                        })
-                                                      )
-                                                    }
-                                                    className="text-primary hover:underline text-sm"
-                                                  >
-                                                    Add Option
-                                                  </button>
-                                                </div>
-                                              )}
+                                            {(field.type === "radio" || field.type === "checkbox") && (
+                                              <div className="ml-8">
+                                                {field.options?.map((opt: string, oidx: number) => (
+                                                  <div key={oidx} className="flex items-center mb-1">
+                                                    <input type={field.type} className="mr-2" disabled />
+                                                    <span>{opt || `Option ${oidx + 1}`}</span>
+                                                    <button
+                                                      className="ml-2 text-gray-400 hover:text-red-500"
+                                                      onClick={() => {
+                                                        if (field.options) { // Type guard
+                                                          const newOptions = field.options.filter(
+                                                            (_, i: number) => i !== oidx
+                                                          );
+                                                          dispatch(
+                                                            updateField({
+                                                              index: idx,
+                                                              updates: {
+                                                                options: newOptions,
+                                                              },
+                                                            })
+                                                          );
+                                                        }
+                                                      }}
+                                                      disabled={(field.options?.length ?? 0) <= 1} // Fallback to 0 if undefined
+                                                      title="Delete Option"
+                                                    >
+                                                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2}>
+                                                        <line x1="4" y1="4" x2="12" y2="12" />
+                                                        <line x1="12" y1="4" x2="4" y2="12" />
+                                                      </svg>
+                                                    </button>
+                                                  </div>
+                                                ))}
+                                                <button
+                                                  className="text-blue-600 text-sm mt-1"
+                                                  onClick={() => {
+                                                    dispatch(
+                                                      updateField({
+                                                        index: idx,
+                                                        updates: {
+                                                          options: [...(field.options || []), ""], // Fallback to empty array
+                                                        },
+                                                      })
+                                                    );
+                                                  }}
+                                                >
+                                                  + Add Option
+                                                </button>
+                                              </div>
+                                            )}
                                           </div>
                                         ))
                                       )}
                                     </div>
-                                    <div className="flex justify-center mt-6">
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          dispatch(setShowQuestionModal(true))
-                                        }
-                                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <button
+                                      className="justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 flex items-center"
+                                      type="button"
+                                      onClick={() =>
+                                        dispatch(setShowQuestionModal(true))
+                                      }
+                                      disabled={loading}
+                                    >
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="24"
+                                        height="24"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        className="lucide lucide-plus mr-1 h-4 w-4"
                                       >
-                                        <svg
-                                          xmlns="http://www.w3.org/2000/svg"
-                                          width="24"
-                                          height="24"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          className="lucide lucide-plus mr-1 h-4 w-4"
-                                        >
-                                          <path d="M5 12h14"></path>
-                                          <path d="M12 5v14"></path>
-                                        </svg>
-                                        Add Field
-                                      </button>
-                                    </div>
+                                        <path d="M5 12h14"></path>
+                                        <path d="M12 5v14"></path>
+                                      </svg>
+                                      Add Field
+                                    </button>
+                                    <button
+                                      className="justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 flex items-center"
+                                      type="button"
+                                      onClick={handleSaveForm}
+                                      disabled={loading}
+                                    >
+                                      {loading ? (
+                                        <>
+                                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                          Saving...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="24"
+                                            height="24"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            className="lucide lucide-save mr-1 h-4 w-4"
+                                          >
+                                            <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path>
+                                            <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"></path>
+                                            <path d="M7 3v4a1 1 0 0 0 1 1h7"></path>
+                                          </svg>
+                                          Save Form
+                                        </>
+                                      )}
+                                    </button>
                                   </div>
                                 </form>
                               </div>
@@ -1618,17 +1850,25 @@ const CreateEvent = () => {
                         >
                           <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
                             <div className="p-6 pt-6">
-                              <h2 className="text-xl font-semibold mb-4">
-                                Form Preview
-                              </h2>
-                              {fields.length === 0 ? (
-                                <div className="text-center p-8 border border-dashed rounded-md text-muted-foreground">
-                                  No fields to preview. Add fields in the "Edit
-                                  Form" tab to see how your form will look.
+                              <div className="space-y-4">
+                                <div
+                                  role="alert"
+                                  className="relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground bg-background text-foreground"
+                                >
+                                  <div className="text-sm [&_p]:leading-relaxed">
+                                    This is how your registration form will
+                                    appear to participants.
+                                  </div>
                                 </div>
-                              ) : (
-                                renderPreviewForm()
-                              )}
+                                {fields.length === 0 ? (
+                                  <div className="text-center p-8 border border-dashed rounded-md text-muted-foreground">
+                                    No fields added yet. Add some fields in the
+                                    Edit Form tab to see the preview.
+                                  </div>
+                                ) : (
+                                  renderPreviewForm()
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1637,38 +1877,124 @@ const CreateEvent = () => {
                   </div>
                   <div className="flex justify-end space-x-4 mt-6">
                     <button
-                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
                       type="button"
-                      onClick={handleSaveForm}
-                      disabled={loading}
+                      onClick={() => dispatch(setStep(3))}
                     >
-                      {loading ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          Saving...
-                        </>
-                      ) : (
-                        "Save Form"
-                      )}
+                      Skip Form Builder
                     </button>
                     <button
                       className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
                       type="button"
-                      onClick={() => dispatch(setStep(3))}
-                      disabled={loading}
+                      onClick={() => {
+                        dispatch(setStep(3));
+                      }}
                     >
-                      Preview Event
+                      Finish
                     </button>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+        ) : step == 3 ? (
+          <>
+            {" "}
+            <div className="py-3 max-w-3xl mx-auto">
+              <div className="rounded-lg border bg-card text-card-foreground shadow-sm mb-6">
+                <div className="flex flex-col space-y-1.5 p-6">
+                  <h3 className="text-2xl font-semibold leading-none tracking-tight">
+                    Event Judges &amp; Mentors
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Add and manage judges and mentors for this event
+                  </p>
+                </div>
+                <div className="p-6 pt-0">
+                  <div className="mb-4 flex justify-between items-center">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Add judges or mentors to evaluate and provide feedback
+                        for this event
+                      </p>
+                    </div>
+                    <button
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                      type="button"
+                      onClick={() => setShowAddJudgeModal(true)}
+                    >
+                      Add Judge/Mentor
+                    </button>
+                  </div>
+
+                  {judgesEmails.length === 0 ? (
+                    <div className="py-6 text-center text-muted-foreground">
+                      No judges or mentors added yet
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {judgesEmails.map((email, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                              <span className="text-primary font-medium">
+                                {email.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <span className="text-sm">{email}</span>
+                          </div>
+                          <button
+                            onClick={() => handleRemoveJudge(email)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-5 w-5"
+                            >
+                              <path d="M3 6h18" />
+                              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex justify-end space-x-4">
+                <button
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                  type="button"
+                  onClick={() => navigate("/my-events")}
+                >
+                  Back to Events
+                </button>
+                <button
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                  type="button"
+                  onClick={handleSubmit}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </>
         ) : (
           renderEventPreview()
         )}
       </div>
-
       {showQuestionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-xl p-6 relative">
@@ -1687,9 +2013,9 @@ const CreateEvent = () => {
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
-            {questionStep === 1 ? (
+            <h2 className="text-xl font-bold mb-4">Questions</h2>
+            {questionStep === 1 && (
               <>
-                <h2 className="text-xl font-bold mb-4">Questions</h2>
                 <div className="mb-4 font-semibold">Add Questions</div>
                 <div className="grid grid-cols-4 gap-4 mb-6">
                   {[
@@ -1699,130 +2025,156 @@ const CreateEvent = () => {
                     { type: "checkbox", label: "Checkboxes", icon: "☑" },
                     { type: "date", label: "Date", icon: "📅" },
                     { type: "time", label: "Time", icon: "⏰" },
-                    { type: "file", label: "File Upload", icon: "⏩" },
+                    { type: "file", label: "File Upload", icon: "⤴" },
                     { type: "rating", label: "Rating", icon: "★" },
-                  ].map((option) => (
+                  ].map((q) => (
                     <button
-                      key={option.type}
+                      key={q.type}
+                      className="flex flex-col items-center p-4 rounded hover:bg-gray-100 transition"
                       onClick={() => {
-                        dispatch(setNewQuestionType(option.type));
+                        dispatch(setNewQuestionType(q.type));
+                        dispatch(
+                          updateNewQuestion({
+                            type: q.type,
+                          })
+                        );
                         dispatch(setQuestionStep(2));
                       }}
-                      className="flex flex-col items-center p-4 rounded hover:bg-gray-100 transition"
                     >
-                      <span className="text-2xl mb-2">{option.icon}</span>
-                      <span className="text-sm text-center">{option.label}</span>
+                      <span className="text-2xl mb-2">{q.icon}</span>
+                      <span className="text-sm">{q.label}</span>
                     </button>
                   ))}
                 </div>
                 <div className="flex justify-end">
                   <button
+                    className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200"
                     onClick={() => dispatch(setShowQuestionModal(false))}
-                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
                   >
                     Cancel
                   </button>
                 </div>
               </>
-            ) : (
+            )}
+            {questionStep === 2 && (
               <>
-                <h2 className="text-xl font-bold mb-4">Add New Question</h2>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium leading-none">
-                      Label
-                    </label>
-                    <input
-                      type="text"
-                      value={newQuestion.label}
-                      onChange={(e) =>
-                        dispatch(
-                          updateNewQuestion({ label: e.target.value })
-                        )
-                      }
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      placeholder="Enter question label"
-                    />
-                  </div>
-
+                <div className="mb-4">
+                  <input
+                    className="w-full border rounded px-3 py-2 mb-2"
+                    placeholder="Write text here"
+                    value={newQuestion.label}
+                    onChange={(e) =>
+                      dispatch(
+                        updateNewQuestion({
+                          label: e.target.value,
+                        })
+                      )
+                    }
+                  />
                   {(newQuestion.type === "radio" ||
                     newQuestion.type === "checkbox") && (
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium leading-none">
-                          Options
-                        </label>
-                        {newQuestion.options?.map((option, optIdx) => (
-                          <div key={optIdx} className="flex items-center gap-2">
+                      <div className="space-y-2 mt-4">
+                        <label className="text-sm font-medium">Options</label>
+                        {newQuestion.options?.map((option: string, idx: number) => (
+                          <div key={idx} className="flex items-center gap-2">
                             <input
                               type="text"
+                              className="flex-1 border rounded px-3 py-2"
+                              placeholder={`Option ${idx + 1}`}
                               value={option}
                               onChange={(e) =>
                                 dispatch(
                                   updateNewQuestionOption({
-                                    index: optIdx,
+                                    index: idx,
                                     value: e.target.value,
                                   })
                                 )
                               }
-                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                              placeholder={`Option ${optIdx + 1}`}
                             />
-                            {newQuestion.options &&
-                              newQuestion.options.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    dispatch(removeNewQuestionOption(optIdx))
-                                  }
-                                  className="text-red-500 hover:text-red-700"
-                                >
-                                  <svg
-                                    width="18"
-                                    height="18"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                  >
-                                    <line x1="6" y1="6" x2="18" y2="18" />
-                                    <line x1="18" y1="6" x2="6" y2="18" />
-                                  </svg>
-                                </button>
-                              )}
+                            <button
+                              type="button"
+                              className="text-red-500 hover:text-red-700"
+                              onClick={() => dispatch(removeNewQuestionOption(idx))}
+                              disabled={(newQuestion.options?.length ?? 0) <= 1}
+                            >
+                              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2}>
+                                <line x1="4" y1="4" x2="12" y2="12" />
+                                <line x1="12" y1="4" x2="4" y2="12" />
+                              </svg>
+                            </button>
                           </div>
                         ))}
                         <button
                           type="button"
+                          className="text-blue-600 text-sm mt-1"
                           onClick={() => dispatch(addNewQuestionOption())}
-                          className="text-primary hover:underline text-sm"
                         >
-                          Add Option
+                          + Add Option
                         </button>
                       </div>
                     )}
+                  <div className="flex items-center mt-2">
 
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={newQuestion.required}
-                      onChange={(e) =>
-                        dispatch(
-                          updateNewQuestion({ required: e.target.checked })
-                        )
-                      }
-                      className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
-                    />
-                    <label className="text-sm">Required</label>
+                    <label htmlFor="question-required">
+                      <input
+                        className="mr-2"
+                        name="question-required"
+                        id="question-required"
+                        type="checkbox"
+                        checked={newQuestion.required}
+                        onChange={(e) =>
+                          dispatch(
+                            updateNewQuestion({
+                              required: e.target.checked,
+                            })
+                          )
+                        }
+                      />
+                      <span>Required</span>
+                    </label>
                   </div>
-
-                  <div className="flex justify-end space-x-4">
+                </div>
+                <div className="flex justify-between">
+                  <button
+                    className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200"
+                    onClick={() => {
+                      dispatch(setQuestionStep(1));
+                      dispatch(
+                        updateNewQuestion({
+                          label: "",
+                          type: "",
+                          required: false,
+                          options: [""],
+                        })
+                      );
+                    }}
+                  >
+                    Back
+                  </button>
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => dispatch(setQuestionStep(1))}
-                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                      className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 mr-2"
+                      onClick={() => dispatch(setShowQuestionModal(false))}
                     >
-                      Back
+                      Cancel
                     </button>
                     <button
+                      className={`px-4 py-2 rounded ${isSaveDisabled
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
+                        }`}
                       onClick={() => {
+                        if (
+                          !newQuestion.label.trim() ||
+                          (["radio", "checkbox"].includes(newQuestion.type) &&
+                            (!newQuestion.options?.length ||
+                              newQuestion.options.some(
+                                (opt: string) => !opt.trim()
+                              )))
+                        ) {
+                          toast.error("Please fill out all required fields.");
+                          return;
+                        }
                         dispatch(addField(newQuestion));
                         dispatch(setShowQuestionModal(false));
                         dispatch(setQuestionStep(1));
@@ -1835,15 +2187,114 @@ const CreateEvent = () => {
                             options: [""],
                           })
                         );
+                        toast.success("Field added successfully!");
                       }}
-                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                      disabled={isSaveDisabled}
                     >
-                      Add Question
+                      Save
                     </button>
                   </div>
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-sm p-6 relative">
+            <button
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-xl"
+              onClick={() => {
+                navigate("/my-events");
+              }}
+            >
+              &times;
+            </button>
+            <h3 className="text-lg font-semibold mb-4">Share this event</h3>
+            <div className="bg-gray-100 px-3 py-2 rounded mb-4 overflow-auto">
+              <span className="text-sm break-all">{`${window.location.origin}/event/${eventId}`}</span>
+            </div>
+            <div className="flex gap-4">
+              <button
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                onClick={handleCopy}
+              >
+                Copy Link
+              </button>
+              <button
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                onClick={() => {
+                  navigate("/my-events");
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Add Judge Modal */}
+      {showAddJudgeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+            <button
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              onClick={() => {
+                setShowAddJudgeModal(false);
+                setJudgeEmailError("");
+              }}
+            >
+              <svg
+                width="24"
+                height="24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+            <h2 className="text-xl font-bold mb-4">Add Judge/Mentor</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={newJudgeEmail}
+                  onChange={(e) => {
+                    setNewJudgeEmail(e.target.value);
+                    setJudgeEmailError("");
+                  }}
+                  placeholder="Enter email address"
+                  className={`w-full rounded-md border ${judgeEmailError ? "border-red-500" : "border-input"
+                    } bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`}
+                />
+                {judgeEmailError && (
+                  <p className="text-sm text-red-500 mt-1">{judgeEmailError}</p>
+                )}
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  className="px-4 py-2 rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                  onClick={() => {
+                    setShowAddJudgeModal(false);
+                    setJudgeEmailError("");
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90"
+                  onClick={handleAddJudge}
+                >
+                  Add Judge
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
